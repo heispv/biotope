@@ -8,7 +8,7 @@
 
 _CLI integration for BioCypher ecosystem packages_
 
-Currently discussed [here}(https://github.com/orgs/biocypher/discussions/9)
+Currently discussed [here](https://github.com/orgs/biocypher/discussions/9)
 
 ## Copyright
 
