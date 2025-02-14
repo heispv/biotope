@@ -38,6 +38,7 @@ Download = "https://pypi.org/project/biotope/#files"
 [tool.poetry.dependencies]
 python = "^3.10"
 click = "^8.1.8"
+PyYAML = "^6.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "*"
@@ -97,7 +98,7 @@ exclude = [
 [tool.ruff.lint.isort]
 case-sensitive = true
 known-first-party = ["src", "biotope"]
-lines-after-imports = 1
+lines-after-imports = 2
 
 [tool.pydoclint]
 style = "google"  # TODO: Other styles are possible here, like 'numpy'
