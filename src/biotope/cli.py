@@ -10,7 +10,7 @@ from biotope.commands.read import read as read_cmd
 @click.version_option(version="0.1.0")
 @click.pass_context
 def cli(ctx: click.Context) -> None:
-    """CLI integration for BioCypher ecosystem packages."""
+    """CLI entrypoint."""
     ctx.ensure_object(dict)
     ctx.obj = {"version": "0.1.0"}
 
