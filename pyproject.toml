@@ -104,3 +104,6 @@ style = "google"  # TODO: Other styles are possible here, like 'numpy'
 arg-type-hints-in-docstring = false
 check-return-types = false
 check-yield-types = false
+
+[tool.poetry.scripts]
+biotope = "biotope.cli:cli"

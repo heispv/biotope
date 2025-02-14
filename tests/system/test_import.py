@@ -27,3 +27,5 @@
 def test_import():
     """Test that the package can be imported."""
     import biotope  # noqa: F401
+    from biotope import cli  # noqa: F401
+    from biotope.commands import read  # noqa: F401
