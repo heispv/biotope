@@ -8,6 +8,8 @@
 
 _CLI integration for BioCypher ecosystem packages_
 
+Currently discussed [here](https://github.com/orgs/biocypher/discussions/9)
+
 ## Copyright
 
 - Copyright © 2025 Sebastian Lobentanzer.
