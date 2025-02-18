@@ -2,6 +2,7 @@
 
 import click
 
+from biotope.commands.chat import chat as chat_cmd
 from biotope.commands.init import init as init_cmd
 from biotope.commands.read import read as read_cmd
 
@@ -27,10 +28,7 @@ def build() -> None:
 cli.add_command(read_cmd, "read")
 
 
-@cli.command()
-def chat() -> None:
-    """Manage LLM integration and knowledge application."""
-    click.echo("Managing LLM integration...")
+cli.add_command(chat_cmd, "chat")
 
 
 @cli.command()
