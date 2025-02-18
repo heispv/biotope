@@ -36,12 +36,18 @@ Documentation = "https://biocypher.org"
 Download = "https://pypi.org/project/biotope/#files"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.13"
 click = "^8.1.8"
 PyYAML = "^6.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "*"
+
+[tool.poetry.group.chat]
+optional = true
+
+[tool.poetry.group.chat.dependencies]
+biochatter = ">=0.7.0"
 
 ################################################################################
 # Tool Configuration
@@ -64,8 +70,9 @@ parallel = true
 [tool.coverage.report]
 exclude_lines = ["pragma: no cover"]
 precision = 2
+
 [tool.ruff]
-line-length = 88
+line-length = 120
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -108,3 +115,6 @@ check-yield-types = false
 
 [tool.poetry.scripts]
 biotope = "biotope.cli:cli"
+
+[project.optional-dependencies]
+chat = ["biochatter>=0.1.0"]
