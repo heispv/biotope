@@ -210,7 +210,7 @@ def interactive():
     description = click.prompt("Dataset description", default="")
 
     # Get required metadata fields
-    data_source = click.prompt("Data source URL", required=True)
+    data_source = click.prompt("Data source URL")
 
     # Use defaults for some fields
     project_name = click.prompt("Project name", default=Path.cwd().name)
@@ -218,7 +218,7 @@ def interactive():
     date = click.prompt("Date of creation", default=datetime.date.today().isoformat())
 
     # Get other required fields
-    access_restrictions = click.prompt("Access restrictions", required=True)
+    access_restrictions = click.prompt("Access restrictions")
 
     # Get optional fields
     format = click.prompt("File format", default="")
