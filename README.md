@@ -8,6 +8,8 @@
 
 _CLI integration for BioCypher ecosystem packages_
 
+Status: early alpha, volatile
+
 Currently discussed [here](https://github.com/orgs/biocypher/discussions/9)
 
 ## Copyright
