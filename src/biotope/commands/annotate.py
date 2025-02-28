@@ -7,6 +7,11 @@ import subprocess
 from pathlib import Path
 
 import click
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.prompt import Confirm, Prompt
+from rich.table import Table
 
 
 @click.group()
@@ -203,27 +208,101 @@ def load(jsonld, record_set, num_records):
 @annotate.command()
 def interactive():
     """Interactively create a Croissant metadata file with required scientific metadata fields."""
-    click.echo("Starting interactive Croissant metadata creation...")
+    console = Console()
 
-    # Get basic metadata with defaults
-    name = click.prompt("Dataset name")
-    description = click.prompt("Dataset description", default="")
+    # Create a nice header
+    console.print(
+        Panel(
+            "[bold blue]Biotope Dataset Metadata Creator[/]",
+            subtitle="Create scientific dataset metadata in Croissant format",
+        )
+    )
 
-    # Get required metadata fields
-    data_source = click.prompt("Data source URL")
+    console.print(Markdown("This wizard will help you document your scientific dataset with standardized metadata."))
+    console.print()
 
-    # Use defaults for some fields
-    project_name = click.prompt("Project name", default=Path.cwd().name)
-    contact = click.prompt("Responsible contact person", default=getpass.getuser())
-    date = click.prompt("Date of creation", default=datetime.date.today().isoformat())
+    # Section: Basic Information
+    console.print("[bold green]Basic Dataset Information[/]")
+    console.print("─" * 50)
 
-    # Get other required fields
-    access_restrictions = click.prompt("Access restrictions")
+    name = click.prompt("Dataset name (a short, descriptive title)")
+    description = click.prompt(
+        "Dataset description (what does this dataset contain and what is it used for?)",
+        default="",
+    )
 
-    # Get optional fields
-    format = click.prompt("File format", default="")
-    legal_obligations = click.prompt("Legal obligations", default="")
-    collaboration_partner = click.prompt("Collaboration partner and institute", default="")
+    # Section: Source Information
+    console.print("\n[bold green]Data Source Information[/]")
+    console.print("─" * 50)
+    console.print("Where did this data come from? (e.g., a URL, database name, or experiment)")
+    data_source = click.prompt("Data source")
+
+    # Section: Ownership and Dates
+    console.print("\n[bold green]Ownership and Dates[/]")
+    console.print("─" * 50)
+
+    project_name = click.prompt(
+        "Project name",
+        default=Path.cwd().name,
+    )
+
+    contact = click.prompt(
+        "Contact person (email preferred)",
+        default=getpass.getuser(),
+    )
+
+    date = click.prompt(
+        "Creation date (YYYY-MM-DD)",
+        default=datetime.date.today().isoformat(),
+    )
+
+    # Section: Access Information
+    console.print("\n[bold green]Access Information[/]")
+    console.print("─" * 50)
+
+    # Create a table for examples
+    table = Table(title="Access Restriction Examples")
+    table.add_column("Type", style="cyan")
+    table.add_column("Description", style="green")
+    table.add_row("Public", "Anyone can access and use the data")
+    table.add_row("Academic", "Restricted to academic/research use only")
+    table.add_row("Approval", "Requires explicit approval from data owner")
+    table.add_row("Embargo", "Will become public after a specific date")
+    console.print(table)
+
+    has_access_restrictions = Confirm.ask(
+        "Does this dataset have access restrictions?",
+        default=False,
+    )
+
+    access_restrictions = None
+    if has_access_restrictions:
+        access_restrictions = Prompt.ask(
+            "Please describe the access restrictions",
+            default="",
+        )
+        if not access_restrictions.strip():
+            access_restrictions = None
+
+    # Section: Additional Information
+    console.print("\n[bold green]Additional Information[/]")
+    console.print("─" * 50)
+    console.print("[italic]The following fields are optional but recommended for scientific datasets[/]")
+
+    format = click.prompt(
+        "File format (e.g., CSV, JSON, HDF5, FASTQ)",
+        default="",
+    )
+
+    legal_obligations = click.prompt(
+        "Legal obligations (e.g., citation requirements, licenses)",
+        default="",
+    )
+
+    collaboration_partner = click.prompt(
+        "Collaboration partner and institute",
+        default="",
+    )
 
     # Create metadata structure
     metadata = {
@@ -238,8 +317,11 @@ def interactive():
         "projectName": project_name,
         "contactPerson": contact,
         "creationDate": date,
-        "accessRestrictions": access_restrictions,
     }
+
+    # Only add access restrictions if they exist
+    if access_restrictions:
+        metadata["accessRestrictions"] = access_restrictions
 
     # Add optional fields if provided
     if format:
@@ -249,13 +331,27 @@ def interactive():
     if collaboration_partner:
         metadata["collaborationPartner"] = collaboration_partner
 
-    # Ask about record sets
-    if click.confirm("Would you like to add a record set?", default=True):
+    # Section: Data Structure
+    console.print("\n[bold green]Data Structure[/]")
+    console.print("─" * 50)
+
+    # Create a table for record set examples
+    table = Table(title="Record Set Examples")
+    table.add_column("Dataset Type", style="cyan")
+    table.add_column("Record Sets", style="green")
+    table.add_row("Genomics", "patients, samples, gene_expressions")
+    table.add_row("Climate", "locations, time_series, measurements")
+    table.add_row("Medical", "patients, visits, treatments, outcomes")
+    console.print(table)
+
+    console.print("Record sets describe the structure of your data.")
+
+    if click.confirm("Would you like to add a record set to describe your data structure?", default=True):
         metadata["ml:recordSet"] = []
 
         while True:
-            record_set_name = click.prompt("Record set name")
-            record_set_description = click.prompt("Record set description", default="")
+            record_set_name = click.prompt("Record set name (e.g., 'patients', 'samples')")
+            record_set_description = click.prompt(f"Description of the '{record_set_name}' record set", default="")
 
             # Create record set
             record_set = {
@@ -265,13 +361,16 @@ def interactive():
                 "description": record_set_description,
             }
 
-            # Ask about fields
-            if click.confirm("Would you like to add fields to this record set?", default=True):
+            # Ask about fields with examples
+            console.print(f"\n[bold]Fields in '{record_set_name}'[/]")
+            console.print("Fields describe the data columns or attributes in this record set.")
+
+            if click.confirm(f"Would you like to add fields to the '{record_set_name}' record set?", default=True):
                 record_set["ml:field"] = []
 
                 while True:
-                    field_name = click.prompt("Field name")
-                    field_description = click.prompt("Field description", default="")
+                    field_name = click.prompt("Field name (column or attribute name)")
+                    field_description = click.prompt(f"Description of '{field_name}'", default="")
 
                     # Create field
                     field = {
@@ -292,9 +391,22 @@ def interactive():
             if not click.confirm("Add another record set?", default=False):
                 break
 
-    # Save metadata
-    output_path = click.prompt("Output file path", default="metadata.json")
+    # Save metadata with a suggested filename
+    default_filename = f"{name.lower().replace(' ', '_')}_metadata.json"
+    output_path = click.prompt("Output file path", default=default_filename)
+
     with open(output_path, "w") as f:
         json.dump(metadata, f, indent=2)
 
-    click.echo(f"Created Croissant metadata file at {output_path}")
+    # Final success message with rich formatting
+    console.print()
+    console.print(
+        Panel(
+            f"[bold green]✅ Created Croissant metadata file at:[/]\n[blue]{output_path}[/]",
+            title="Success",
+            border_style="green",
+        )
+    )
+
+    console.print("[italic]Validate this file with:[/]")
+    console.print(f"[bold yellow]biotope annotate validate --jsonld {output_path}[/]")

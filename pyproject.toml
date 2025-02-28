@@ -38,6 +38,7 @@ Download = "https://pypi.org/project/biotope/#files"
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
 click = "^8.1.8"
+rich = "^13.9.4"
 PyYAML = "^6.0"
 mlcroissant = "^1.0.13"
 
