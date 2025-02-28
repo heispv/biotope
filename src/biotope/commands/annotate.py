@@ -240,7 +240,7 @@ def interactive():
     console.print("[bold green]Basic Dataset Information[/]")
     console.print("─" * 50)
 
-    name = click.prompt("Dataset name (a short, descriptive title)")
+    name = click.prompt("Dataset name (a short, descriptive title; no spaces allowed)")
     description = click.prompt(
         "Dataset description (what does this dataset contain and what is it used for?)",
         default="",
