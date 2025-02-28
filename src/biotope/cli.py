@@ -2,6 +2,7 @@
 
 import click
 
+from biotope.commands.annotate import annotate as annotate_cmd
 from biotope.commands.chat import chat as chat_cmd
 from biotope.commands.init import init as init_cmd
 from biotope.commands.read import read as read_cmd
@@ -29,6 +30,9 @@ cli.add_command(read_cmd, "read")
 
 
 cli.add_command(chat_cmd, "chat")
+
+
+cli.add_command(annotate_cmd, "annotate")
 
 
 @cli.command()

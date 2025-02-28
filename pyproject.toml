@@ -39,9 +39,11 @@ Download = "https://pypi.org/project/biotope/#files"
 python = ">=3.10,<3.13"
 click = "^8.1.8"
 PyYAML = "^6.0"
+mlcroissant = "^1.0.13"
 
 [tool.poetry.group.dev.dependencies]
-pre-commit = "*"
+pre-commit = "^4.1.0"
+pytest = "^8.3.4"
 
 [tool.poetry.group.chat]
 optional = true
