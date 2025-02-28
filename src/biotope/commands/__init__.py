@@ -1,1 +1,1 @@
-"""Command implementations for biotope CLI.""" 
+"""Command implementations for biotope CLI."""

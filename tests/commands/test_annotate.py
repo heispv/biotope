@@ -72,8 +72,6 @@ def sample_metadata_file(tmp_path):
 def test_create_command_with_required_fields(runner, tmp_path):
     """Test creating a new metadata file with all required scientific metadata fields."""
     output_path = tmp_path / "output.json"
-    today = datetime.date.today().isoformat()
-    username = getpass.getuser()
 
     # Run the create command with all required fields
     result = runner.invoke(
@@ -221,7 +219,7 @@ def test_load_command(mock_run, runner, sample_metadata_file):
     """Test loading records from a dataset."""
     # Configure the mock to return sample data
     sample_output = "\n".join(
-        [f"Record {i + 1}: {{'patient_id': 'P{i}', 'gene_expression': [0.1, 0.2, 0.3]}}" for i in range(5)]
+        [f"Record {i + 1}: {{'patient_id': 'P{i}', 'gene_expression': [0.1, 0.2, 0.3]}}" for i in range(5)],
     )
     mock_process = mock.Mock()
     mock_process.stdout = sample_output

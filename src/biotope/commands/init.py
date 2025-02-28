@@ -22,6 +22,9 @@ def init(dir: Path) -> None:  # noqa: A002
     Args:
         dir: Directory to initialize the project in
 
+    Raises:
+        click.Abort: If a biotope project already exists in the directory.
+
     """
     # Check if .biotope directory already exists
     biotope_dir = dir / ".biotope"
@@ -112,8 +115,7 @@ def init(dir: Path) -> None:  # noqa: A002
         create_project_structure(dir, user_config, metadata)
         click.echo("\n✨ Biotope established successfully! ✨")
         click.echo(
-            f"\nYour biotope '{project_name}' has been established. "
-            "Make sure to water regularly.",
+            f"\nYour biotope '{project_name}' has been established. Make sure to water regularly.",
         )
         click.echo("\nNext steps:")
         click.echo("1. Review the configuration in config/biotope.yaml")

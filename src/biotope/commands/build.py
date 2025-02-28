@@ -24,4 +24,3 @@ def build(config: str, output: str) -> None:
 def build_knowledge() -> None:
     """Build knowledge representation from configured sources."""
     # Implementation details will go here
-    pass 

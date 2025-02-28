@@ -60,6 +60,7 @@ def chat(
     interactive conversations with LLMs about biomedical knowledge.
 
     Args:
+        ctx: The click context.
         model_name: The name of the LLM model to use.
         prompts: A dictionary of prompts for the chat. Use
             'primary_model_prompts' as the key for system prompts.
@@ -90,7 +91,8 @@ def chat(
 
         if not api_key and not os.getenv("OPENAI_API_KEY"):
             click.echo(
-                "No API key provided. Please provide an API key using the --api-key option or set the OPENAI_API_KEY environment variable.",
+                "No API key provided. "
+                "Please provide an API key using the --api-key option or set the OPENAI_API_KEY environment variable.",
                 err=True,
             )
             ctx.exit(1)
