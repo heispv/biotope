@@ -5,6 +5,7 @@ import getpass
 import json
 import os
 import subprocess
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -63,7 +64,7 @@ def sample_metadata_file(tmp_path):
         ],
     }
 
-    with open(metadata_path, "w") as f:
+    with Path(metadata_path).open("w") as f:
         json.dump(metadata, f)
 
     return metadata_path
@@ -108,7 +109,7 @@ def test_create_command_with_required_fields(runner, tmp_path):
     assert os.path.exists(output_path)
 
     # Check the content of the file
-    with open(output_path) as f:
+    with Path(output_path).open() as f:
         metadata = json.load(f)
 
     # Check basic fields
@@ -130,7 +131,7 @@ def test_create_command_with_required_fields(runner, tmp_path):
 def test_create_command_with_defaults(runner, tmp_path):
     """Test creating a new metadata file with default values for some fields."""
     output_path = tmp_path / "output.json"
-    today = datetime.date.today().isoformat()
+    today = datetime.datetime.now(tz=datetime.timezone.utc).date().isoformat()
     username = getpass.getuser()
 
     # Run the create command with minimal required fields
@@ -152,7 +153,7 @@ def test_create_command_with_defaults(runner, tmp_path):
     assert result.exit_code == 0
 
     # Check the content of the file
-    with open(output_path) as f:
+    with Path(output_path).open() as f:
         metadata = json.load(f)
 
     # Check that defaults were applied
@@ -277,7 +278,6 @@ def test_interactive_command_with_scientific_fields(
     tmp_path,
 ):
     """Test interactively creating a metadata file with scientific metadata fields."""
-    # Mock today's date and username
     mock_date.today.return_value = datetime.date(2023, 6, 15)
     mock_getuser.return_value = "researcher"
 
@@ -320,8 +320,8 @@ def test_interactive_command_with_scientific_fields(
     assert f"Created Croissant metadata file at {expected_output_path}" in result.output
 
     # Verify the file was created and contains the expected content
-    assert os.path.exists(expected_output_path)
-    with open(expected_output_path) as f:
+    assert Path(expected_output_path).exists()
+    with Path(expected_output_path).open() as f:
         metadata = json.load(f)
 
     # Check that all the scientific metadata fields are present

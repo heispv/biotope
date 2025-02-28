@@ -48,7 +48,7 @@ def annotate() -> None:
 )
 @click.option(
     "--date",
-    default=datetime.date.today().isoformat(),
+    default=datetime.datetime.now(tz=datetime.timezone.utc).date().isoformat(),
     help="Date of creation (ISO format: YYYY-MM-DD).",
 )
 @click.option(
