@@ -12,6 +12,26 @@ Status: early alpha, volatile
 
 Currently discussed [here](https://github.com/orgs/biocypher/discussions/9)
 
+## Metadata annotation using Croissant, short guide
+
+The `biotope` package features a metadata annotation assistant using the recently introduced [Croissant](https://research.google/blog/croissant-a-metadata-format-for-ml-ready-datasets/) schema. It is available as the `biotope annotate` module. Usage:
+
+```
+pip install biotope
+biotope annotate interactive
+```
+
+After creation, `biotope` can also be used to validate the JSON-LD (CAVE: being a prototype, biotope does not yet implement all croissant fields):
+
+```
+biotope annotate validate –jsonld <file_name.json>
+```
+
+`biotope` also has the method `biotope annotate create` to create metadata files from CLI parameters (no interactive mode) and `biotope annotate load` to load an existing record (the use of this is not well-defined yet).
+
+Unit tests to inform about further functions and details can be found at https://github.com/biocypher/biotope/blob/main/tests/commands/test_annotate.py
+
+
 ## Copyright
 
 - Copyright © 2025 Sebastian Lobentanzer.
