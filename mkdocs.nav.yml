@@ -1,0 +1,12 @@
+site_name: Biotope
+
+nav:
+  - Home: index.md
+  - Reference:
+      - API Documentation:
+          - Annotate: api-docs/annotate.md
+          - Build: api-docs/build.md
+          - Chat: api-docs/chat.md
+          - Init: api-docs/init.md
+          - Read: api-docs/read.md
+          - View: api-docs/view.md
