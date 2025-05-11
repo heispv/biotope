@@ -55,8 +55,6 @@ plugins:
         python:
           options:
             heading_level: 3
-            extra:
-              paths: [src]
 
 extra:
   social:
@@ -71,4 +69,4 @@ repo_name: biocypher/biotope
 edit_uri: edit/main/docs
 
 watch:
-  - src/biotope
+  - biotope

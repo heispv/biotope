@@ -66,7 +66,7 @@ markers = ["raises"]
 
 [tool.coverage.paths]
 source = [
-    "src/biotope",
+    "biotope",
     "*/site-packages/biotope",
 ]
 
@@ -111,7 +111,7 @@ exclude = [
 
 [tool.ruff.lint.isort]
 case-sensitive = true
-known-first-party = ["src", "biotope"]
+known-first-party = ["biotope"]
 lines-after-imports = 2
 
 [tool.pydoclint]
