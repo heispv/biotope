@@ -38,20 +38,25 @@ theme:
 
 nav:
   - Home: index.md
-  - API: api/index.md
+  - Reference:
+      - API Documentation:
+          - Annotate: api-docs/annotate.md
+          - Build: api-docs/build.md
+          - Chat: api-docs/chat.md
+          - Init: api-docs/init.md
+          - Read: api-docs/read.md
+          - View: api-docs/view.md
 
 plugins:
   - search
   - mkdocstrings:
+      default_handler: python
       handlers:
         python:
-          paths: [src]
           options:
-            show_submodules: true
-            show_category_heading: true
-            show_if_no_docstring: true
-            show_signature_annotations: true
-      default_handler: python
+            heading_level: 3
+            extra:
+              paths: [src]
 
 extra:
   social:
@@ -63,6 +68,7 @@ copyright: Copyright &copy 2025 Sebastian Lobentanzer
 
 repo_url: https://github.com/biocypher/biotope
 repo_name: biocypher/biotope
+edit_uri: edit/main/docs
 
 watch:
   - src/biotope

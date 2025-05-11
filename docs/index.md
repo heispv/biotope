@@ -39,4 +39,4 @@ https://github.com/biocypher/biotope/blob/main/tests/commands/test_annotate.py
 ## Copyright
 
 - Copyright © 2025 Sebastian Lobentanzer.
-- Free software distributed under the [MIT License](../LICENSE).
+- Free software distributed under the MIT License.
