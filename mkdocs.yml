@@ -1,5 +1,5 @@
-site_name: biotope
-site_description: CLI integration for BioCypher ecosystem packages
+site_name: Biotope
+site_description: Biotope - CLI integration for BioCypher ecosystem packages
 site_author: Sebastian Lobentanzer
 site_url: https://biotope.readthedocs.io/
 
@@ -36,6 +36,10 @@ theme:
         icon: material/weather-sunny
         name: Switch to light mode
 
+nav:
+  - Home: index.md
+  - API: api/index.md
+
 plugins:
   - search
   - mkdocstrings:
@@ -48,7 +52,6 @@ plugins:
             show_if_no_docstring: true
             show_signature_annotations: true
       default_handler: python
-  - awesome-pages
 
 extra:
   social:

@@ -46,6 +46,9 @@ mlcroissant = "^1.0.13"
 pre-commit = "^4.1.0"
 pytest = "^8.3.4"
 bump2version = "^1.0.1"
+mkdocs-material = "^9.6.13"
+mike = "^2.1.3"
+mkdocstrings-python = "^1.16.10"
 
 [tool.poetry.group.chat]
 optional = true
