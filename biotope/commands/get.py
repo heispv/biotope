@@ -16,6 +16,12 @@ import requests
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 
+# Add custom MIME type mappings
+mimetypes.add_type("chemical/seq-na-fasta", ".fasta")
+mimetypes.add_type("chemical/seq-aa-fasta", ".faa")
+mimetypes.add_type("chemical/seq-na-fasta", ".fna")
+
+
 def calculate_md5(file_path: Path) -> str:
     """Calculate MD5 hash of a file."""
     hash_md5 = hashlib.md5()
@@ -125,7 +131,7 @@ def get_file_and_annotate(url: str, output_dir: str | None = None) -> None:
                     "@id": f"file_{file_hash}",  # Use hash-based unique ID
                     "name": filename,
                     "contentUrl": url,
-                    "encodingFormat": mimetypes.guess_type(filename)[0] or "application/octet-stream",
+                    "encodingFormat": detect_file_type(Path(file_path)),
                     "sha256": file_hash,
                 },
             ],

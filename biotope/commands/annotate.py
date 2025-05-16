@@ -428,7 +428,9 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
     format = click.prompt(
         "File format (MIME type, e.g., text/csv, application/json, application/x-hdf5, application/fastq)",
-        default=metadata.get("encodingFormat", ""),
+        default=metadata.get("encodingFormat")
+        or metadata.get("format")
+        or (metadata.get("distribution", [{}])[0].get("encodingFormat", "")),
     )
 
     legal_obligations = click.prompt(
