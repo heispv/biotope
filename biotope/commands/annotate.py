@@ -243,9 +243,19 @@ def validate(jsonld):
         )
         click.echo("Validation successful! The metadata file is valid.")
         if result.stdout:
-            click.echo(f"Output: {result.stdout}")
+            # Filter out informational log messages
+            filtered_output = "\n".join(
+                line for line in result.stdout.splitlines() if not line.startswith("I") or not line.endswith("Done.")
+            )
+            if filtered_output:
+                click.echo(f"Output: {filtered_output}")
         if result.stderr:
-            click.echo(f"Warnings: {result.stderr}")
+            # Filter out informational log messages
+            filtered_stderr = "\n".join(
+                line for line in result.stderr.splitlines() if not line.startswith("I") or not line.endswith("Done.")
+            )
+            if filtered_stderr:
+                click.echo(f"Warnings: {filtered_stderr}")
     except subprocess.CalledProcessError as e:
         click.echo(f"Validation failed: {e.stderr}", err=True)
         exit(1)
