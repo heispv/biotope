@@ -762,7 +762,7 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
     console.print()
     console.print(
         Panel(
-            f"[bold green]✅ Created Croissant metadata file at:[/]\n[blue]{output_path}[/]",
+            f"[bold green]✅ Created Croissant metadata file at:[/] [blue]{output_path}[/]",
             title="Success",
             border_style="green",
         ),
