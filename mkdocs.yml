@@ -36,6 +36,9 @@ theme:
 
 nav:
   - Home: index.md
+  - Learn:
+    - Tutorials:
+      - Annotate Omics: learn/tutorials/annotate-omics.md
   - Reference:
       - API Documentation:
           - Annotate: api-docs/annotate.md
