@@ -152,3 +152,228 @@ def test_get_file_and_annotate_successful_flow(tmp_path, sample_file):
         assert len(metadata["distribution"]) == 1
         assert metadata["distribution"][0]["sha256"] == "test_md5"
         assert len(metadata["cr:recordSet"]) == 1
+
+
+@pytest.fixture
+def test_files_dir(tmp_path):
+    """Create a temporary directory with test files."""
+    # Create test files
+    csv_content = """GeneID,Sample1,Sample2,Sample3,Sample4,Sample5
+BRCA1,12.5,15.2,8.7,10.3,14.1
+TP53,9.8,11.4,7.2,8.9,10.5
+EGFR,14.2,13.8,15.1,12.7,13.9"""
+
+    fasta_content = """>BRCA1_HUMAN BRCA1, early onset breast cancer 1
+MSTESMNRVAVGDMLRLLHEVEGVRTLRQRVKDSQPLGDFYDRVRKELQLLRQRMKKT
+FQLVDFSRRLEDLLMKLLNQKAKLPGLLNTDPRLLEVLQDMGHARALAVLLTAGDGLG"""
+
+    # Write files
+    csv_file = tmp_path / "test_gene_expression.csv"
+    fasta_file = tmp_path / "test_protein_sequences.fasta"
+
+    csv_file.write_text(csv_content)
+    fasta_file.write_text(fasta_content)
+
+    return tmp_path
+
+
+def test_get_file_and_annotate_csv(test_files_dir, runner):
+    """Test metadata extraction from CSV file."""
+    csv_file = test_files_dir / "test_gene_expression.csv"
+    output_dir = test_files_dir / "downloads"
+    output_dir.mkdir(exist_ok=True)
+
+    # Create a file URL
+    file_url = f"file://{csv_file.absolute()}"
+
+    # Mock all required functions
+    with (
+        mock.patch("biotope.commands.get.download_file") as mock_download,
+        mock.patch("biotope.commands.get.calculate_md5") as mock_md5,
+        mock.patch("biotope.commands.get.detect_file_type") as mock_type,
+        mock.patch("click.get_current_context") as mock_context,
+    ):
+        # Setup mocks
+        mock_download.return_value = csv_file
+        mock_md5.return_value = "test_md5"
+        mock_type.return_value = "text/csv"
+
+        # Setup context mock
+        mock_ctx = mock.Mock()
+        mock_ctx.invoke = mock.Mock()
+        mock_context.return_value = mock_ctx
+
+        # Call the function without skipping annotation
+        metadata = get_file_and_annotate(file_url, str(output_dir), skip_annotation=False)
+
+        # Verify metadata structure
+        assert metadata is not None
+        assert "@context" in metadata
+        assert "@type" in metadata
+        assert metadata["@type"] == "Dataset"
+        assert "name" in metadata
+        assert metadata["name"] == "test_gene_expression.csv"
+        assert "encodingFormat" in metadata
+        assert metadata["encodingFormat"] == "text/csv"
+        assert "distribution" in metadata
+        assert len(metadata["distribution"]) == 1
+
+        # Verify file object metadata
+        file_obj = metadata["distribution"][0]
+        assert file_obj["@type"] == "sc:FileObject"
+        assert "name" in file_obj
+        assert "contentUrl" in file_obj
+        assert "encodingFormat" in file_obj
+        assert file_obj["encodingFormat"] == "text/csv"
+        assert "sha256" in file_obj
+        assert file_obj["sha256"] == "test_md5"
+
+        # Verify record set
+        assert "cr:recordSet" in metadata
+        assert len(metadata["cr:recordSet"]) == 1
+        record_set = metadata["cr:recordSet"][0]
+        assert record_set["@type"] == "cr:RecordSet"
+        assert record_set["name"] == "main"
+        assert "cr:field" in record_set
+        assert len(record_set["cr:field"]) == 1
+
+
+def test_get_file_and_annotate_fasta(test_files_dir, runner):
+    """Test metadata extraction from FASTA file."""
+    fasta_file = test_files_dir / "test_protein_sequences.fasta"
+    output_dir = test_files_dir / "downloads"
+    output_dir.mkdir(exist_ok=True)
+
+    # Create a file URL
+    file_url = f"file://{fasta_file.absolute()}"
+
+    # Mock all required functions
+    with (
+        mock.patch("biotope.commands.get.download_file") as mock_download,
+        mock.patch("biotope.commands.get.calculate_md5") as mock_md5,
+        mock.patch("biotope.commands.get.detect_file_type") as mock_type,
+        mock.patch("click.get_current_context") as mock_context,
+    ):
+        # Setup mocks
+        mock_download.return_value = fasta_file
+        mock_md5.return_value = "test_md5"
+        mock_type.return_value = "text/x-fasta"
+
+        # Setup context mock
+        mock_ctx = mock.Mock()
+        mock_ctx.invoke = mock.Mock()
+        mock_context.return_value = mock_ctx
+
+        # Call the function without skipping annotation
+        metadata = get_file_and_annotate(file_url, str(output_dir), skip_annotation=False)
+
+        # Verify metadata structure
+        assert metadata is not None
+        assert "@context" in metadata
+        assert "@type" in metadata
+        assert metadata["@type"] == "Dataset"
+        assert "name" in metadata
+        assert metadata["name"] == "test_protein_sequences.fasta"
+        assert "encodingFormat" in metadata
+        assert metadata["encodingFormat"] == "text/x-fasta"
+        assert "distribution" in metadata
+        assert len(metadata["distribution"]) == 1
+
+        # Verify file object metadata
+        file_obj = metadata["distribution"][0]
+        assert file_obj["@type"] == "sc:FileObject"
+        assert "name" in file_obj
+        assert "contentUrl" in file_obj
+        assert "encodingFormat" in file_obj
+        assert file_obj["encodingFormat"] == "text/x-fasta"
+        assert "sha256" in file_obj
+        assert file_obj["sha256"] == "test_md5"
+
+        # Verify record set
+        assert "cr:recordSet" in metadata
+        assert len(metadata["cr:recordSet"]) == 1
+        record_set = metadata["cr:recordSet"][0]
+        assert record_set["@type"] == "cr:RecordSet"
+        assert record_set["name"] == "main"
+        assert "cr:field" in record_set
+        assert len(record_set["cr:field"]) == 1
+
+
+def test_get_file_and_annotate_invalid_url(test_files_dir, runner):
+    """Test handling of invalid URL."""
+    output_dir = test_files_dir / "downloads"
+    output_dir.mkdir(exist_ok=True)
+
+    # Call the function with invalid URL
+    metadata = get_file_and_annotate("invalid://url", str(output_dir), skip_annotation=True)
+
+    # Verify that metadata is None for invalid URL
+    assert metadata is None
+
+
+def test_get_file_and_annotate_nonexistent_file(test_files_dir, runner):
+    """Test handling of nonexistent file."""
+    output_dir = test_files_dir / "downloads"
+    output_dir.mkdir(exist_ok=True)
+
+    # Create a file URL for nonexistent file
+    file_url = f"file://{test_files_dir}/nonexistent.txt"
+
+    # Call the function
+    metadata = get_file_and_annotate(file_url, str(output_dir), skip_annotation=True)
+
+    # Verify that metadata is None for nonexistent file
+    assert metadata is None
+
+
+def test_get_file_and_annotate_with_annotation(test_files_dir, runner, monkeypatch):
+    """Test metadata extraction with annotation process."""
+    csv_file = test_files_dir / "test_gene_expression.csv"
+    output_dir = test_files_dir / "downloads"
+    output_dir.mkdir(exist_ok=True)
+
+    # Create a file URL
+    file_url = f"file://{csv_file.absolute()}"
+
+    # Mock all required functions
+    def mock_download_file(url, output_dir):
+        return csv_file
+
+    def mock_calculate_md5(file_path):
+        return "test_md5"
+
+    def mock_detect_file_type(file_path):
+        return "text/csv"
+
+    def mock_annotate(*args, **kwargs):
+        return None
+
+    # Create a mock command object with get_command method
+    mock_command = mock.Mock()
+    mock_command.get_command = mock.Mock(return_value=mock_annotate)
+
+    # Mock click context
+    mock_context = mock.Mock()
+    mock_context.invoke = mock.Mock()
+    monkeypatch.setattr("click.get_current_context", lambda: mock_context)
+
+    # Mock all the required functions
+    monkeypatch.setattr("biotope.commands.get.download_file", mock_download_file)
+    monkeypatch.setattr("biotope.commands.get.calculate_md5", mock_calculate_md5)
+    monkeypatch.setattr("biotope.commands.get.detect_file_type", mock_detect_file_type)
+    monkeypatch.setattr("biotope.commands.annotate.annotate", mock_command)
+
+    # Call the function without skipping annotation
+    metadata = get_file_and_annotate(file_url, str(output_dir), skip_annotation=False)
+
+    # Verify metadata structure
+    assert metadata is not None
+    assert "@context" in metadata
+    assert "@type" in metadata
+    assert metadata["@type"] == "Dataset"
+    assert "name" in metadata
+    assert metadata["name"] == "test_gene_expression.csv"
+    assert "encodingFormat" in metadata
+    assert metadata["encodingFormat"] == "text/csv"
+    assert "distribution" in metadata
+    assert len(metadata["distribution"]) == 1

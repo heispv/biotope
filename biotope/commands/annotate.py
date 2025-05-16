@@ -261,17 +261,20 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
     console.print("[bold green]Basic Dataset Information[/]")
     console.print("─" * 50)
 
-    name = click.prompt("Dataset name (a short, descriptive title; no spaces allowed)")
+    name = click.prompt(
+        "Dataset name (a short, descriptive title; no spaces allowed)",
+        default=metadata.get("name", ""),
+    )
     description = click.prompt(
         "Dataset description (what does this dataset contain and what is it used for?)",
-        default="",
+        default=metadata.get("description", ""),
     )
 
     # Section: Source Information
     console.print("\n[bold green]Data Source Information[/]")
     console.print("─" * 50)
     console.print("Where did this data come from? (e.g., a URL, database name, or experiment)")
-    data_source = click.prompt("Data source")
+    data_source = click.prompt("Data source", default=metadata.get("url", ""))
 
     # Section: Ownership and Dates
     console.print("\n[bold green]Ownership and Dates[/]")
@@ -279,17 +282,17 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
     project_name = click.prompt(
         "Project name",
-        default=Path.cwd().name,
+        default=metadata.get("cr:projectName", Path.cwd().name),
     )
 
     contact = click.prompt(
         "Contact person (email preferred)",
-        default=getpass.getuser(),
+        default=metadata.get("creator", {}).get("name", getpass.getuser()),
     )
 
     date = click.prompt(
         "Creation date (YYYY-MM-DD)",
-        default=datetime.date.today().isoformat(),
+        default=metadata.get("dateCreated", datetime.date.today().isoformat()),
     )
 
     # Section: Access Information
@@ -308,14 +311,14 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
     has_access_restrictions = Confirm.ask(
         "Does this dataset have access restrictions?",
-        default=False,
+        default=bool(metadata.get("cr:accessRestrictions")),
     )
 
     access_restrictions = None
     if has_access_restrictions:
         access_restrictions = Prompt.ask(
             "Please describe the access restrictions",
-            default="",
+            default=metadata.get("cr:accessRestrictions", ""),
         )
         if not access_restrictions.strip():
             access_restrictions = None
@@ -327,17 +330,17 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
     format = click.prompt(
         "File format (e.g., CSV, JSON, HDF5, FASTQ)",
-        default="",
+        default=metadata.get("encodingFormat", ""),
     )
 
     legal_obligations = click.prompt(
         "Legal obligations (e.g., citation requirements, licenses)",
-        default="",
+        default=metadata.get("cr:legalObligations", ""),
     )
 
     collaboration_partner = click.prompt(
         "Collaboration partner and institute",
-        default="",
+        default=metadata.get("cr:collaborationPartner", ""),
     )
 
     # Section: Publication Information
@@ -347,22 +350,22 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
     publication_date = click.prompt(
         "Publication date (YYYY-MM-DD)",
-        default=date,  # Use creation date as default
+        default=metadata.get("datePublished", date),  # Use creation date as default
     )
 
     version = click.prompt(
         "Dataset version",
-        default="1.0",
+        default=metadata.get("version", "1.0"),
     )
 
     license_url = click.prompt(
         "License URL",
-        default="https://creativecommons.org/licenses/by/4.0/",
+        default=metadata.get("license", "https://creativecommons.org/licenses/by/4.0/"),
     )
 
     citation = click.prompt(
         "Citation text",
-        default=f"Please cite this dataset as: {name} ({date.split('-')[0]})",
+        default=metadata.get("citation", f"Please cite this dataset as: {name} ({date.split('-')[0]})"),
     )
 
     # Create metadata structure with proper Croissant context
