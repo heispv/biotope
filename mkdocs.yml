@@ -38,6 +38,7 @@ nav:
   - Home: index.md
   - Learn:
     - Tutorials:
+      - Get Files: learn/tutorials/get-files.md
       - Annotate Omics: learn/tutorials/annotate-omics.md
   - Reference:
       - API Documentation:

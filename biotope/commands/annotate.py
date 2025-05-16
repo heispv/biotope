@@ -1,5 +1,7 @@
 """Command for creating dataset metadata definitions in Croissant format."""
 
+from __future__ import annotations
+
 import datetime
 import getpass
 import json
@@ -221,9 +223,28 @@ def load(jsonld, record_set, num_records):
 
 
 @annotate.command()
-def interactive():
-    """Interactively create a Croissant metadata file with required scientific metadata fields."""
+@click.option(
+    "--file-path",
+    "-f",
+    type=click.Path(exists=True),
+    help="Path to the file to annotate",
+)
+@click.option(
+    "--prefill-metadata",
+    "-p",
+    type=str,
+    help="JSON string containing pre-filled metadata",
+)
+def interactive(file_path: str | None = None, prefill_metadata: str | None = None) -> None:
+    """Interactive annotation process for files."""
     console = Console()
+
+    # Initialize metadata with pre-filled values if provided
+    metadata = json.loads(prefill_metadata) if prefill_metadata else {}
+
+    # If file path is provided, use it
+    if file_path:
+        metadata["file_path"] = file_path
 
     # Create a nice header
     console.print(

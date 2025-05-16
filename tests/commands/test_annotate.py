@@ -458,8 +458,8 @@ def test_annotate_group(runner):
     # Run the annotate command without subcommands to see help
     result = runner.invoke(annotate)
 
-    # Check that the command executed successfully
-    assert result.exit_code == 0
+    # Check that the command returns exit code 2 (indicating subcommand required)
+    assert result.exit_code == 2
 
     # Verify that the help text includes all subcommands
     assert "create" in result.output

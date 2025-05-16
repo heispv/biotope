@@ -22,6 +22,7 @@ are prototypes for new features. See more information in the API documentation.
 - `biotope chat`: Chat with a BioCypher project (BioChatter)
 - `biotope read`: Extract information from unstructured modalities (BioGather)
 - `biotope view`: Use visual analysis tools to interpret your data and metadata
+- `biotope get`: Download files and automatically start annotation
 - `biotope annotate`: Annotate your data with consistent metadata in Croissant ML
 
 ## Metadata annotation using Croissant, short guide
@@ -36,6 +37,14 @@ pip install biotope
 biotope annotate interactive
 ```
 
+You can also use the `biotope get` command to download files and automatically start the annotation process:
+
+```
+biotope get https://example.com/data/file.txt
+```
+
+This will download the file and pre-fill metadata fields based on the file's properties.
+
 After creation, `biotope` can also be used to validate the JSON-LD (CAVE: being
 a prototype, biotope does not yet implement all croissant fields):
 
@@ -45,14 +54,13 @@ biotope annotate validate –jsonld <file_name.json>
 
 `biotope` also has the method `biotope annotate create` to create metadata files
 from CLI parameters (no interactive mode) and `biotope annotate load` to load an
-existing record (the use of this is not well-defined yet). Obvious improvements
-would be to integrate file download (something like `biotope annotate get`) with
-automatic annotation functionalities, and the integration of LLMs for the
-further automation of metadata annotations from file contents (using the
-`biochatter` module of `biotope`).
+existing record (the use of this is not well-defined yet). Further improvements
+would be the integration of LLMs for the automation of metadata annotations from
+file contents (using the `biochatter` module of `biotope`).
 
 Unit tests to inform about further functions and details can be found at
 https://github.com/biocypher/biotope/blob/main/tests/commands/test_annotate.py
+and https://github.com/biocypher/biotope/blob/main/tests/commands/test_get.py
 
 ## Copyright
 
