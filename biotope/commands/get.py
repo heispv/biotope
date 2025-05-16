@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import datetime
+import getpass
 import hashlib
 import json
 import mimetypes
+import os
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -64,101 +67,82 @@ def download_file(url: str, output_dir: Path) -> Path | None:
         return None
 
 
-def get_file_and_annotate(url: str, output_dir: str, skip_annotation: bool, console=None) -> dict | None:
+def get_file_and_annotate(url: str, output_dir: str | None = None) -> None:
     """
-    Core logic for downloading a file and optionally triggering annotation process.
-    Returns the metadata dict if annotation is triggered, else None.
+    Download a file and create metadata for it.
+
+    Args:
+        url: URL of the file to download
+        output_dir: Directory to save the file to (defaults to current directory)
+
     """
-    if console is None:
-        from rich.console import Console
+    import click  # Import click at the top of the function
 
-        console = Console()
-
-    # Create output directory if it doesn't exist
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    # Download the file
-    console.print(f"[bold blue]Downloading file from {url}[/]")
-    file_path = download_file(url, output_path)
-
-    if not file_path:
-        console.print("[bold red]Download failed[/]")
-        return None
-
-    console.print(f"[bold green]Successfully downloaded to {file_path}[/]")
-
-    if skip_annotation:
-        return None
-
-    # Prepare metadata for annotation in Croissant ML format
-    file_md5 = calculate_md5(file_path)
-    file_type = detect_file_type(file_path)
-    filename = file_path.name
-
-    # Create pre-filled metadata following Croissant ML schema
-    prefill_metadata = {
-        "@context": {
-            "@vocab": "https://schema.org/",
-            "cr": "https://mlcommons.org/croissant/",
-            "ml": "http://ml-schema.org/",
-            "sc": "https://schema.org/",
-        },
-        "@type": "Dataset",
-        "name": filename,  # Default to filename, can be changed in interactive mode
-        "description": f"Downloaded file from {url}",
-        "url": url,
-        "encodingFormat": file_type,
-        "distribution": [
-            {
-                "@type": "sc:FileObject",
-                "@id": f"file_{file_md5}",
-                "name": filename,
-                "contentUrl": str(file_path),
-                "encodingFormat": file_type,
-                "sha256": file_md5,  # Using MD5 as SHA256 for now
-            },
-        ],
-        "cr:recordSet": [
-            {
-                "@type": "cr:RecordSet",
-                "@id": "#main",
-                "name": "main",
-                "description": f"Records from {filename}",
-                "cr:field": [
-                    {
-                        "@type": "cr:Field",
-                        "@id": "#main/content",
-                        "name": "content",
-                        "description": "File content",
-                        "dataType": "sc:Text",
-                        "source": {
-                            "fileObject": {"@id": f"file_{file_md5}"},
-                            "extract": {"fileProperty": "content"},
-                        },
-                    },
-                ],
-            },
-        ],
-    }
-
-    # Trigger annotation process
-    console.print("[bold blue]Starting annotation process...[/]")
     try:
-        import click
+        # Create output directory if it doesn't exist
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
 
+        # Download the file
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+
+        # Get filename from URL or Content-Disposition header
+        filename = None
+        if "Content-Disposition" in response.headers:
+            content_disposition = response.headers["Content-Disposition"]
+            if "filename=" in content_disposition:
+                filename = content_disposition.split("filename=")[1].strip('"')
+        if not filename:
+            filename = url.split("/")[-1]
+
+        # Save the file
+        file_path = os.path.join(output_dir or "", filename)
+        with open(file_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+        # Calculate MD5 hash for unique identification
+        md5_hash = hashlib.md5()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                md5_hash.update(chunk)
+        file_hash = md5_hash.hexdigest()
+
+        # Create a unique dataset name by combining a prefix with the file name
+        dataset_name = f"Dataset_{filename}"
+
+        # Create pre-filled metadata
+        prefill_metadata = {
+            "name": dataset_name,  # Use the unique dataset name
+            "description": f"Dataset containing file downloaded from {url}",
+            "url": url,
+            "creator": {"@type": "Person", "name": getpass.getuser()},
+            "dateCreated": datetime.datetime.now(tz=datetime.timezone.utc).date().isoformat(),
+            "distribution": [
+                {
+                    "@type": "sc:FileObject",
+                    "@id": f"file_{file_hash}",  # Use hash-based unique ID
+                    "name": filename,
+                    "contentUrl": url,
+                    "encodingFormat": mimetypes.guess_type(filename)[0] or "application/octet-stream",
+                    "sha256": file_hash,
+                },
+            ],
+        }
+
+        # Start interactive annotation using Click's context
         from biotope.commands.annotate import annotate
 
         ctx = click.get_current_context()
         ctx.invoke(
             annotate.get_command(ctx, "interactive"),
+            file_path=file_path,
             prefill_metadata=json.dumps(prefill_metadata),
         )
-    except Exception as e:
-        console.print(f"[bold red]Error during annotation: {e}[/]")
-        return None
-
-    return prefill_metadata
+    except requests.exceptions.RequestException as e:
+        click.echo(f"Error downloading file: {e}", err=True)
+        return
 
 
 @click.command()
@@ -170,16 +154,10 @@ def get_file_and_annotate(url: str, output_dir: str, skip_annotation: bool, cons
     default="downloads",
     help="Directory to save downloaded files",
 )
-@click.option(
-    "--skip-annotation",
-    "-s",
-    is_flag=True,
-    help="Skip automatic annotation after download",
-)
-def get(url: str, output_dir: str, skip_annotation: bool) -> None:
+def get(url: str, output_dir: str) -> None:
     """
-    Download a file and optionally trigger annotation process.
+    Download a file and trigger annotation process.
 
     URL can be any valid HTTP/HTTPS URL pointing to a file.
     """
-    get_file_and_annotate(url, output_dir, skip_annotation)
+    get_file_and_annotate(url, output_dir)

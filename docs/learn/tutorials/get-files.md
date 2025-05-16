@@ -10,7 +10,13 @@ system.
 The simplest way to use the `get` command is to provide a URL:
 
 ```bash
-biotope get https://example.com/data/file.txt
+biotope get https://raw.githubusercontent.com/biocypher/biotope/refs/heads/main/tests/example_gene_expression.csv
+```
+
+or 
+
+```bash
+biotope get https://raw.githubusercontent.com/biocypher/biotope/refs/heads/main/tests/example_protein_sequences.fasta
 ```
 
 This will:

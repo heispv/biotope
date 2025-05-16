@@ -16,6 +16,62 @@ from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
 
+def get_standard_context() -> dict:
+    """Get the standard Croissant context."""
+    return {
+        "@vocab": "https://schema.org/",
+        "cr": "https://mlcommons.org/croissant/",
+        "ml": "http://ml-schema.org/",
+        "sc": "https://schema.org/",
+        "dct": "http://purl.org/dc/terms/",
+        "data": "https://mlcommons.org/croissant/data/",
+        "rai": "https://mlcommons.org/croissant/rai/",
+        "format": "https://mlcommons.org/croissant/format/",
+        "citeAs": "https://mlcommons.org/croissant/citeAs/",
+        "conformsTo": "https://mlcommons.org/croissant/conformsTo/",
+        "@language": "en",
+        "repeated": "https://mlcommons.org/croissant/repeated/",
+        "field": "https://mlcommons.org/croissant/field/",
+        "examples": "https://mlcommons.org/croissant/examples/",
+        "recordSet": "https://mlcommons.org/croissant/recordSet/",
+        "fileObject": "https://mlcommons.org/croissant/fileObject/",
+        "fileSet": "https://mlcommons.org/croissant/fileSet/",
+        "source": "https://mlcommons.org/croissant/source/",
+        "references": "https://mlcommons.org/croissant/references/",
+        "key": "https://mlcommons.org/croissant/key/",
+        "parentField": "https://mlcommons.org/croissant/parentField/",
+        "isLiveDataset": "https://mlcommons.org/croissant/isLiveDataset/",
+        "separator": "https://mlcommons.org/croissant/separator/",
+        "extract": "https://mlcommons.org/croissant/extract/",
+        "subField": "https://mlcommons.org/croissant/subField/",
+        "regex": "https://mlcommons.org/croissant/regex/",
+        "column": "https://mlcommons.org/croissant/column/",
+        "path": "https://mlcommons.org/croissant/path/",
+        "fileProperty": "https://mlcommons.org/croissant/fileProperty/",
+        "md5": "https://mlcommons.org/croissant/md5/",
+        "jsonPath": "https://mlcommons.org/croissant/jsonPath/",
+        "transform": "https://mlcommons.org/croissant/transform/",
+        "replace": "https://mlcommons.org/croissant/replace/",
+        "dataType": "https://mlcommons.org/croissant/dataType/",
+        "includes": "https://mlcommons.org/croissant/includes/",
+        "excludes": "https://mlcommons.org/croissant/excludes/",
+    }
+
+
+def merge_metadata(dynamic_metadata: dict) -> dict:
+    """Merge dynamic metadata with standard context and structure."""
+    # Start with standard context
+    metadata = {
+        "@context": get_standard_context(),
+        "@type": "Dataset",
+    }
+
+    # Update with dynamic content
+    metadata.update(dynamic_metadata)
+
+    return metadata
+
+
 @click.group()
 def annotate() -> None:
     """Create dataset metadata definitions in Croissant format."""
@@ -99,6 +155,36 @@ def create(
             "cr": "https://mlcommons.org/croissant/",
             "ml": "http://ml-schema.org/",
             "sc": "https://schema.org/",
+            "dct": "http://purl.org/dc/terms/",
+            "data": "https://mlcommons.org/croissant/data/",
+            "rai": "https://mlcommons.org/croissant/rai/",
+            "format": "https://mlcommons.org/croissant/format/",
+            "citeAs": "https://mlcommons.org/croissant/citeAs/",
+            "conformsTo": "https://mlcommons.org/croissant/conformsTo/",
+            "@language": "en",
+            "repeated": "https://mlcommons.org/croissant/repeated/",
+            "field": "https://mlcommons.org/croissant/field/",
+            "examples": "https://mlcommons.org/croissant/examples/",
+            "recordSet": "https://mlcommons.org/croissant/recordSet/",
+            "fileObject": "https://mlcommons.org/croissant/fileObject/",
+            "fileSet": "https://mlcommons.org/croissant/fileSet/",
+            "source": "https://mlcommons.org/croissant/source/",
+            "references": "https://mlcommons.org/croissant/references/",
+            "key": "https://mlcommons.org/croissant/key/",
+            "parentField": "https://mlcommons.org/croissant/parentField/",
+            "isLiveDataset": "https://mlcommons.org/croissant/isLiveDataset/",
+            "separator": "https://mlcommons.org/croissant/separator/",
+            "extract": "https://mlcommons.org/croissant/extract/",
+            "subField": "https://mlcommons.org/croissant/subField/",
+            "regex": "https://mlcommons.org/croissant/regex/",
+            "column": "https://mlcommons.org/croissant/column/",
+            "path": "https://mlcommons.org/croissant/path/",
+            "fileProperty": "https://mlcommons.org/croissant/fileProperty/",
+            "md5": "https://mlcommons.org/croissant/md5/",
+            "jsonPath": "https://mlcommons.org/croissant/jsonPath/",
+            "transform": "https://mlcommons.org/croissant/transform/",
+            "replace": "https://mlcommons.org/croissant/replace/",
+            "dataType": "https://mlcommons.org/croissant/dataType/",
         },
         "@type": "Dataset",
         "name": name,
@@ -240,7 +326,10 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
     console = Console()
 
     # Initialize metadata with pre-filled values if provided
-    metadata = json.loads(prefill_metadata) if prefill_metadata else {}
+    dynamic_metadata = json.loads(prefill_metadata) if prefill_metadata else {}
+
+    # Merge with standard context and structure
+    metadata = merge_metadata(dynamic_metadata)
 
     # If file path is provided, use it
     if file_path:
@@ -261,10 +350,19 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
     console.print("[bold green]Basic Dataset Information[/]")
     console.print("─" * 50)
 
-    name = click.prompt(
-        "Dataset name (a short, descriptive title; no spaces allowed)",
-        default=metadata.get("name", ""),
-    )
+    # Use pre-filled name if available, otherwise prompt
+    dataset_name = metadata.get("name", "")
+    if not dataset_name:
+        dataset_name = click.prompt(
+            "Dataset name (a short, descriptive title; no spaces allowed)",
+            default="",
+        )
+    else:
+        dataset_name = click.prompt(
+            "Dataset name (a short, descriptive title; no spaces allowed)",
+            default=dataset_name,
+        )
+
     description = click.prompt(
         "Dataset description (what does this dataset contain and what is it used for?)",
         default=metadata.get("description", ""),
@@ -329,7 +427,7 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
     console.print("[italic]The following fields are optional but recommended for scientific datasets[/]")
 
     format = click.prompt(
-        "File format (e.g., CSV, JSON, HDF5, FASTQ)",
+        "File format (MIME type, e.g., text/csv, application/json, application/x-hdf5, application/fastq)",
         default=metadata.get("encodingFormat", ""),
     )
 
@@ -365,19 +463,14 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
     citation = click.prompt(
         "Citation text",
-        default=metadata.get("citation", f"Please cite this dataset as: {name} ({date.split('-')[0]})"),
+        default=metadata.get("citation", f"Please cite this dataset as: {dataset_name} ({date.split('-')[0]})"),
     )
 
-    # Create metadata structure with proper Croissant context
-    metadata = {
-        "@context": {
-            "@vocab": "https://schema.org/",
-            "cr": "https://mlcommons.org/croissant/",
-            "ml": "http://ml-schema.org/",
-            "sc": "https://schema.org/",
-        },
+    # Update metadata with new values while preserving any existing fields
+    new_metadata = {
+        "@context": get_standard_context(),  # Use the standard context
         "@type": "Dataset",
-        "name": name,
+        "name": dataset_name,
         "description": description,
         "url": data_source,
         "creator": {
@@ -386,7 +479,6 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
         },
         "dateCreated": date,
         "cr:projectName": project_name,
-        # Add recommended properties
         "datePublished": publication_date,
         "version": version,
         "license": license_url,
@@ -395,25 +487,35 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
     # Only add access restrictions if they exist
     if access_restrictions:
-        metadata["cr:accessRestrictions"] = access_restrictions
+        new_metadata["cr:accessRestrictions"] = access_restrictions
 
     # Add optional fields if provided
     if format:
-        metadata["encodingFormat"] = format
+        new_metadata["encodingFormat"] = format
     if legal_obligations:
-        metadata["cr:legalObligations"] = legal_obligations
+        new_metadata["cr:legalObligations"] = legal_obligations
     if collaboration_partner:
-        metadata["cr:collaborationPartner"] = collaboration_partner
+        new_metadata["cr:collaborationPartner"] = collaboration_partner
 
-    # Initialize distribution array for FileObjects/FileSets
-    metadata["distribution"] = []
+    # Update metadata while preserving pre-filled values
+    for key, value in new_metadata.items():
+        if key not in ["distribution"]:  # Don't overwrite distribution
+            metadata[key] = value
+
+    # Initialize distribution array for FileObjects/FileSets if it doesn't exist
+    if "distribution" not in metadata:
+        metadata["distribution"] = []
 
     # Section: File Resources
     console.print("\n[bold green]File Resources[/]")
     console.print("─" * 50)
     console.print("Croissant datasets can include file resources (FileObject) and file collections (FileSet).")
 
-    if click.confirm("Would you like to add file resources to your dataset?", default=True):
+    # If we have pre-filled distribution, use it
+    if prefill_metadata and "distribution" in dynamic_metadata:
+        metadata["distribution"] = dynamic_metadata["distribution"]
+        console.print("[bold green]Using pre-filled file resources[/]")
+    elif click.confirm("Would you like to add file resources to your dataset?", default=True):
         while True:
             resource_type = click.prompt(
                 "Resource type",
@@ -425,7 +527,9 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
                 file_id = click.prompt("File ID (unique identifier for this file)")
                 file_name = click.prompt("File name (including extension)")
                 content_url = click.prompt("Content URL (where the file can be accessed)")
-                encoding_format = click.prompt("Encoding format (e.g., text/csv, application/zip)")
+                encoding_format = click.prompt(
+                    "Encoding format (MIME type, e.g., text/csv, application/json, application/x-hdf5, application/fastq)",
+                )
 
                 file_object = {
                     "@type": "sc:FileObject",
@@ -461,7 +565,10 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
                 }
 
                 # File pattern information
-                encoding_format = click.prompt("Encoding format of files in this set", default="")
+                encoding_format = click.prompt(
+                    "Encoding format of files in this set (MIME type, e.g., text/csv, application/json, application/x-hdf5, application/fastq)",
+                    default="",
+                )
                 if encoding_format:
                     fileset["encodingFormat"] = encoding_format
 
@@ -624,7 +731,7 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
                 break
 
     # Save metadata with a suggested filename
-    default_filename = f"{name.lower().replace(' ', '_')}_metadata.json"
+    default_filename = f"{dataset_name.lower().replace(' ', '_')}_metadata.json"
     output_path = click.prompt("Output file path", default=default_filename)
 
     with open(output_path, "w") as f:
