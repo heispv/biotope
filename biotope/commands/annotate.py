@@ -513,8 +513,29 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
     # If we have pre-filled distribution, use it
     if prefill_metadata and "distribution" in dynamic_metadata:
-        metadata["distribution"] = dynamic_metadata["distribution"]
-        console.print("[bold green]Using pre-filled file resources[/]")
+        # Create a table to display pre-filled file information
+        table = Table(title="Pre-filled File Resources")
+        table.add_column("Type", style="cyan")
+        table.add_column("Name", style="green")
+        table.add_column("Format", style="yellow")
+        table.add_column("Hash", style="magenta")
+
+        for resource in dynamic_metadata["distribution"]:
+            resource_type = resource.get("@type", "").replace("sc:", "").replace("cr:", "")
+            name = resource.get("name", "")
+            format = resource.get("encodingFormat", "")
+            hash = resource.get("sha256", "")[:8] + "..." if resource.get("sha256") else ""
+
+            table.add_row(resource_type, name, format, hash)
+
+        console.print(table)
+
+        if click.confirm("Would you like to use these pre-filled file resources?", default=True):
+            metadata["distribution"] = dynamic_metadata["distribution"]
+            console.print("[bold green]Using pre-filled file resources[/]")
+        else:
+            console.print("[yellow]You can now add new file resources manually[/]")
+            metadata["distribution"] = []
     elif click.confirm("Would you like to add file resources to your dataset?", default=True):
         while True:
             resource_type = click.prompt(
