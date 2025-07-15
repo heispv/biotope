@@ -143,5 +143,5 @@ and https://github.com/biocypher/biotope/blob/main/tests/commands/test_get.py
 
 ## Copyright
 
-- Copyright © 2025 Sebastian Lobentanzer.
+- Copyright © 2025 BioCypher Team.
 - Free software distributed under the MIT License.

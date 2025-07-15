@@ -1,6 +1,6 @@
 site_name: Biotope
 site_description: Biotope - CLI integration for BioCypher ecosystem packages
-site_author: Sebastian Lobentanzer
+site_author: BioCypher Team
 site_url: https://biocypher.github.io/biotope/
 
 markdown_extensions:
@@ -70,9 +70,9 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/biocypher
-      name: Sebastian Lobentanzer
+      name: BioCypher Team
 
-copyright: Copyright &copy 2025 Sebastian Lobentanzer
+copyright: Copyright &copy 2025 BioCypher Team
 
 repo_url: https://github.com/biocypher/biotope
 repo_name: biocypher/biotope

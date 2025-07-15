@@ -71,5 +71,5 @@ For more details and advanced usage, see the [full documentation](https://biocyp
 
 ## Copyright
 
-- Copyright © 2025 Sebastian Lobentanzer.
+- Copyright © 2025 BioCypher Team.
 - Free software distributed under the [MIT License](./LICENSE).
