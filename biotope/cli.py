@@ -18,7 +18,7 @@ from biotope.commands.status import status as status_cmd
 
 
 @click.group()
-@click.version_option(version="0.3.3")
+@click.version_option(version="0.4.0")
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     """CLI entrypoint."""
