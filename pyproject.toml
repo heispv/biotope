@@ -10,8 +10,6 @@ build-backend = "poetry.core.masonry.api"
 # Project Configuration
 ################################################################################
 
-[project]
-# This section will be replaced with Poetry's format
 [tool.poetry]
 name = "biotope"
 version = "0.2.2"
@@ -55,6 +53,9 @@ optional = true
 
 [tool.poetry.group.chat.dependencies]
 biochatter = ">=0.7.0"
+
+[tool.poetry.scripts]
+biotope = "biotope.cli:cli"
 
 ################################################################################
 # Tool Configuration
@@ -119,9 +120,3 @@ style = "google"  # TODO: Other styles are possible here, like 'numpy'
 arg-type-hints-in-docstring = false
 check-return-types = false
 check-yield-types = false
-
-[tool.poetry.scripts]
-biotope = "biotope.cli:cli"
-
-[project.optional-dependencies]
-chat = ["biochatter>=0.1.0"]
