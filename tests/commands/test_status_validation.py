@@ -256,7 +256,7 @@ def test_status_suggests_annotate_for_incomplete_staged_metadata(runner, git_rep
             # Should suggest annotate command for incomplete staged metadata
             assert result.exit_code == 0
             assert "biotope annotate interactive --staged" in result.output
-            assert "to complete metadata annotations" in result.output
+            assert "staged file" in result.output or "staged files" in result.output
 
 
 def test_status_does_not_suggest_annotate_for_complete_staged_metadata(runner, git_repo):
@@ -334,9 +334,9 @@ def test_status_does_not_suggest_annotate_for_complete_staged_metadata(runner, g
             # Should NOT suggest annotate command for complete staged metadata
             assert result.exit_code == 0
             assert "biotope annotate interactive --staged" not in result.output
-            assert "to complete metadata annotations" not in result.output
+            assert "staged file" not in result.output and "staged files" not in result.output
             # Should still suggest commit
-            assert "biotope commit" in result.output 
+            assert "biotope commit" in result.output
 
 
 def test_status_suggests_annotate_for_incomplete_tracked_metadata(runner, git_repo):
@@ -410,7 +410,7 @@ def test_status_suggests_annotate_for_incomplete_tracked_metadata(runner, git_re
             # Should suggest annotate --incomplete command for incomplete tracked metadata
             assert result.exit_code == 0
             assert "biotope annotate interactive --incomplete" in result.output
-            assert "to complete metadata" in result.output
+            assert "tracked file" in result.output or "tracked files" in result.output
 
 
 def test_status_does_not_suggest_annotate_for_complete_tracked_metadata(runner, git_repo):
@@ -489,7 +489,7 @@ def test_status_does_not_suggest_annotate_for_complete_tracked_metadata(runner, 
             # Should NOT suggest annotate --incomplete command for complete tracked metadata
             assert result.exit_code == 0
             assert "biotope annotate interactive --incomplete" not in result.output
-            assert "to complete metadata" not in result.output
+            assert "tracked file" not in result.output and "tracked files" not in result.output
 
 
 def test_status_prioritizes_staged_over_tracked_incomplete(runner, git_repo):
@@ -586,4 +586,7 @@ def test_status_prioritizes_staged_over_tracked_incomplete(runner, git_repo):
             # Should suggest --staged (not --incomplete) when there are staged files
             assert result.exit_code == 0
             assert "biotope annotate interactive --staged" in result.output
-            assert "biotope annotate interactive --incomplete" not in result.output 
+            assert "staged file" in result.output or "staged files" in result.output
+            # Should also suggest --incomplete if both exist
+            assert "biotope annotate interactive --incomplete" in result.output
+            assert "tracked file" in result.output or "tracked files" in result.output 

@@ -155,22 +155,26 @@ def _show_rich_status(biotope_root: Path, console: Console, biotope_only: bool) 
     
     # Check if there are tracked metadata files that need annotation
     has_incomplete_tracked = any(not is_annotated for is_annotated, _ in tracked_annotation_status.values())
-    
+
+    show_next_steps = False
+    if total_staged > 0 or total_modified > 0 or total_untracked > 0 or has_incomplete_tracked:
+        console.print(f"\n💡 Next steps:")
+        show_next_steps = True
+
+    # Suggest annotate for staged files if needed
+    if has_incomplete_annotations:
+        console.print(f"  • Run 'biotope annotate interactive --staged' to complete metadata annotations for staged files")
+    # Suggest annotate for incomplete tracked files if needed
+    if has_incomplete_tracked:
+        console.print(f"  • Run 'biotope annotate interactive --incomplete' to complete metadata annotations for all tracked files")
+    # Suggest commit if there are staged files
     if total_staged > 0:
-        console.print(f"\n💡 Next steps:")
-        if has_incomplete_annotations:
-            console.print(f"  • Run 'biotope annotate interactive --staged' to complete metadata annotations")
         console.print(f"  • Run 'biotope commit -m \"message\"' to commit changes")
+    # Suggest add/annotate/commit if there are only modified or untracked files
     elif total_modified > 0 or total_untracked > 0:
-        console.print(f"\n💡 Next steps:")
         console.print(f"  • Run 'biotope add <data_file>' to add data files")
         console.print(f"  • Run 'biotope annotate interactive --staged' to create metadata")
         console.print(f"  • Run 'biotope commit -m \"message\"' to commit changes")
-    
-    # Show suggestion for incomplete tracked files if no other actions are needed
-    if has_incomplete_tracked and total_staged == 0 and total_modified == 0 and total_untracked == 0:
-        console.print(f"\n💡 Next steps:")
-        console.print(f"  • Run 'biotope annotate interactive --incomplete' to complete metadata annotations")
 
 
 def _show_porcelain_status(biotope_root: Path, biotope_only: bool) -> None:
