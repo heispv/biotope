@@ -14,25 +14,60 @@ Documentation [here](https://biocypher.github.io/biotope/latest/), may be incomp
 
 Currently discussed [here](https://github.com/orgs/biocypher/discussions/9).
 
-## Metadata annotation using Croissant, short guide
+## Metadata Management — Main Usage
 
-The `biotope` package features a metadata annotation assistant using the recently introduced [Croissant](https://research.google/blog/croissant-a-metadata-format-for-ml-ready-datasets/) schema. It is available as the `biotope annotate` module. Usage:
+The `biotope` CLI provides a unified interface for managing scientific datasets and metadata in the BioCypher ecosystem. It supports project initialization, data staging, metadata annotation, version control, and more.
+Here we describe the metadata management functionality, the most mature aspect of the package.
+Most other functionality is in prototype stage.
 
+### Typical Workflow
+
+```bash
+# 1. Initialize a new biotope project (with Git integration)
+biotope init
+
+# 2. Add local data files for annotation and tracking
+biotope add data/raw/experiment.csv
+
+#    Or download and stage remote files
+biotope get https://example.com/data/experiment.csv
+
+# 3. Check project status and staged files
+biotope status
+
+# 4. Create or complete metadata annotations
+biotope annotate interactive --staged
+#    Or complete incomplete annotations
+biotope annotate interactive --incomplete
+
+# 5. Commit metadata changes to version control
+biotope commit -m "Add experiment dataset"
+
+# 6. View project history
+biotope log --oneline
+
+# 7. Push or pull metadata to/from remote repositories
+biotope push
+biotope pull
+
+# 8. Verify data integrity
+biotope check-data
 ```
-pip install biotope
-biotope annotate interactive
-```
 
-After creation, `biotope` can also be used to validate the JSON-LD (CAVE: being a prototype, biotope does not yet implement all croissant fields):
+### Available Commands
 
-```
-biotope annotate validate –jsonld <file_name.json>
-```
+- `biotope init` – Initialize a new project with Git integration.
+- `biotope add` – Stage local data files for annotation and version control.
+- `biotope get` – Download and stage remote files for annotation.
+- `biotope status` – Show the current status of your project and staged files.
+- `biotope annotate` – Create, complete, or validate metadata using the Croissant ML schema.
+- `biotope commit` – Commit metadata changes using Git.
+- `biotope log` – View the commit history of your project.
+- `biotope push` / `biotope pull` – Share metadata with remote repositories.
+- `biotope check-data` – Verify data integrity using checksums.
+- `biotope build`, `biotope chat`, `biotope read`, `biotope view` – Additional tools for building knowledge representations, chatting with your project, extracting information, and visual analysis.
 
-`biotope` also has the method `biotope annotate create` to create metadata files from CLI parameters (no interactive mode) and `biotope annotate load` to load an existing record (the use of this is not well-defined yet). Obvious improvements would be to integrate file download (something like `biotope annotate get`) with automatic annotation functionalities, and the integration of LLMs for the further automation of metadata annotations from file contents (using the `biochatter` module of `biotope`).
-
-Unit tests to inform about further functions and details can be found at https://github.com/biocypher/biotope/blob/main/tests/commands/test_annotate.py
-
+For more details and advanced usage, see the [full documentation](https://biocypher.github.io/biotope/latest/).
 
 ## Copyright
 
