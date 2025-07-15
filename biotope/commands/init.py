@@ -5,6 +5,7 @@ from pathlib import Path
 
 import click
 import yaml
+from rich.console import Console
 
 from biotope.utils import is_git_repo
 
@@ -83,9 +84,10 @@ def init(dir: Path) -> None:  # noqa: A002
             )
 
     # Project-level metadata collection for pre-filling annotations
-    click.echo("\n[bold blue]Project Metadata Setup[/]")
-    click.echo("The following information will be used to pre-fill metadata forms when creating dataset annotations.")
-    click.echo("You can skip any fields and provide them later during annotation.")
+    console = Console()
+    console.print("\n[bold blue]Project Metadata Setup[/]")
+    console.print("The following information will be used to pre-fill metadata forms when creating dataset annotations.")
+    console.print("You can skip any fields and provide them later during annotation.")
     
     collect_project_metadata = click.confirm(
         "\nWould you like to set up project-level metadata now? This will be used to pre-fill metadata later.",
@@ -94,8 +96,8 @@ def init(dir: Path) -> None:  # noqa: A002
     
     project_metadata = {}
     if collect_project_metadata:
-        click.echo("\n[bold green]Project Information[/]")
-        click.echo("─" * 50)
+        console.print("\n[bold green]Project Information[/]")
+        console.print("─" * 50)
         
         # Project description
         project_description = click.prompt(
