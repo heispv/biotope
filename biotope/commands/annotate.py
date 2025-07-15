@@ -860,15 +860,194 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
 def _run_interactive_annotation(console: Console, file_path: Path, prefill_metadata: dict, biotope_root: Path) -> None:
     """Run interactive annotation for a specific file."""
-    # This would contain the existing interactive annotation logic
-    # For now, just create basic metadata
+    # Start with pre-filled metadata
     metadata = merge_metadata(prefill_metadata)
+    
+    # Create a nice header for this file
+    console.print(
+        Panel(
+            f"[bold blue]Annotating: {file_path.name}[/]",
+            subtitle="Interactive metadata creation",
+        ),
+    )
+    
+    console.print(Markdown("This wizard will help you document your scientific dataset with standardized metadata."))
+    console.print()
+    
+    # Section: Basic Information
+    console.print("[bold green]Basic Dataset Information[/]")
+    console.print("─" * 50)
+    
+    # Use pre-filled name if available, otherwise prompt
+    dataset_name = metadata.get("name", "")
+    if not dataset_name:
+        dataset_name = click.prompt(
+            "Dataset name (a short, descriptive title; no spaces allowed)",
+            default="",
+        )
+    else:
+        dataset_name = click.prompt(
+            "Dataset name (a short, descriptive title; no spaces allowed)",
+            default=dataset_name,
+        )
+    
+    description = click.prompt(
+        "Dataset description (what does this dataset contain and what is it used for?)",
+        default=metadata.get("description", ""),
+    )
+    
+    # Section: Source Information
+    console.print("\n[bold green]Data Source Information[/]")
+    console.print("─" * 50)
+    console.print("Where did this data come from? (e.g., a URL, database name, or experiment)")
+    data_source = click.prompt("Data source", default=metadata.get("url", ""))
+    
+    # Section: Ownership and Dates
+    console.print("\n[bold green]Ownership and Dates[/]")
+    console.print("─" * 50)
+    
+    project_name = click.prompt(
+        "Project name",
+        default=metadata.get("cr:projectName", Path.cwd().name),
+    )
+    
+    contact = click.prompt(
+        "Contact person (email preferred)",
+        default=metadata.get("creator", {}).get("name", getpass.getuser()),
+    )
+    
+    date = click.prompt(
+        "Creation date (YYYY-MM-DD)",
+        default=metadata.get("dateCreated", datetime.date.today().isoformat()),
+    )
+    
+    # Section: Access Information
+    console.print("\n[bold green]Access Information[/]")
+    console.print("─" * 50)
+    
+    # Create a table for examples
+    table = Table(title="Access Restriction Examples")
+    table.add_column("Type", style="cyan")
+    table.add_column("Description", style="green")
+    table.add_row("Public", "Anyone can access and use the data")
+    table.add_row("Academic", "Restricted to academic/research use only")
+    table.add_row("Approval", "Requires explicit approval from data owner")
+    table.add_row("Embargo", "Will become public after a specific date")
+    console.print(table)
+    
+    has_access_restrictions = Confirm.ask(
+        "Does this dataset have access restrictions?",
+        default=bool(metadata.get("cr:accessRestrictions")),
+    )
+    
+    access_restrictions = None
+    if has_access_restrictions:
+        access_restrictions = Prompt.ask(
+            "Please describe the access restrictions",
+            default=metadata.get("cr:accessRestrictions", ""),
+        )
+        if not access_restrictions.strip():
+            access_restrictions = None
+    
+    # Section: Additional Information
+    console.print("\n[bold green]Additional Information[/]")
+    console.print("─" * 50)
+    console.print("[italic]The following fields are optional but recommended for scientific datasets[/]")
+    
+    format = click.prompt(
+        "File format (MIME type, e.g., text/csv, application/json, application/x-hdf5, application/fastq)",
+        default=metadata.get("encodingFormat")
+        or metadata.get("format")
+        or (metadata.get("distribution", [{}])[0].get("encodingFormat", "")),
+    )
+    
+    legal_obligations = click.prompt(
+        "Legal obligations (e.g., citation requirements, licenses)",
+        default=metadata.get("cr:legalObligations", ""),
+    )
+    
+    collaboration_partner = click.prompt(
+        "Collaboration partner and institute",
+        default=metadata.get("cr:collaborationPartner", ""),
+    )
+    
+    # Section: Publication Information
+    console.print("\n[bold green]Publication Information[/]")
+    console.print("─" * 50)
+    console.print("[italic]The following fields are recommended for proper dataset citation[/]")
+    
+    publication_date = click.prompt(
+        "Publication date (YYYY-MM-DD)",
+        default=metadata.get("datePublished", date),  # Use creation date as default
+    )
+    
+    version = click.prompt(
+        "Dataset version",
+        default=metadata.get("version", "1.0"),
+    )
+    
+    license_url = click.prompt(
+        "License URL",
+        default=metadata.get("license", "https://creativecommons.org/licenses/by/4.0/"),
+    )
+    
+    citation = click.prompt(
+        "Citation text",
+        default=metadata.get("citation", f"Please cite this dataset as: {dataset_name} ({date.split('-')[0]})"),
+    )
+    
+    # Update metadata with new values while preserving any existing fields
+    new_metadata = {
+        "@context": get_standard_context(),  # Use the standard context
+        "@type": "Dataset",
+        "name": dataset_name,
+        "description": description,
+        "url": data_source,
+        "creator": {
+            "@type": "Person",
+            "name": contact,
+        },
+        "dateCreated": date,
+        "cr:projectName": project_name,
+        "datePublished": publication_date,
+        "version": version,
+        "license": license_url,
+        "citation": citation,
+    }
+    
+    # Only add access restrictions if they exist
+    if access_restrictions:
+        new_metadata["cr:accessRestrictions"] = access_restrictions
+    
+    # Add optional fields if provided
+    if format:
+        new_metadata["encodingFormat"] = format
+    if legal_obligations:
+        new_metadata["cr:legalObligations"] = legal_obligations
+    if collaboration_partner:
+        new_metadata["cr:collaborationPartner"] = collaboration_partner
+    
+    # Update metadata while preserving pre-filled values (especially distribution)
+    for key, value in new_metadata.items():
+        if key not in ["distribution"]:  # Don't overwrite distribution
+            metadata[key] = value
+    
+    # Initialize distribution array for FileObjects/FileSets if it doesn't exist
+    if "distribution" not in metadata:
+        metadata["distribution"] = []
+    
+    # Update the distribution with the new format if provided
+    if format and metadata["distribution"]:
+        for distribution in metadata["distribution"]:
+            if distribution.get("@type") == "sc:FileObject":
+                distribution["encodingFormat"] = format
     
     # Save to datasets directory
     datasets_dir = biotope_root / ".biotope" / "datasets"
     datasets_dir.mkdir(parents=True, exist_ok=True)
     
-    output_path = datasets_dir / f"{file_path.stem}.jsonld"
+    # Use the dataset name for the filename, not the original file name
+    output_path = datasets_dir / f"{dataset_name}.jsonld"
     with open(output_path, "w") as f:
         json.dump(metadata, f, indent=2)
     
