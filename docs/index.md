@@ -104,6 +104,11 @@ Unit tests to inform about further functions and details can be found at
 https://github.com/biocypher/biotope/blob/main/tests/commands/test_annotate.py
 and https://github.com/biocypher/biotope/blob/main/tests/commands/test_get.py
 
+## Further Reading
+
+- [Annotation Validation and Status Reporting](git-integration.md#annotation-validation-and-status-reporting): How to ensure your datasets are properly annotated and how to configure requirements (user guide).
+- [Developer & Admin Guide: Annotation Validation](git-integration-dev.md#developer--admin-guide-annotation-validation): How to customize, extend, and manage annotation validation (admin/dev guide).
+
 ## Copyright
 
 - Copyright © 2025 Sebastian Lobentanzer.

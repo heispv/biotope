@@ -330,3 +330,82 @@ The Git-on-Top implementation provides:
 - **Performance**: Native Git performance
 
 This approach eliminates the need for custom version control while providing robust metadata management capabilities. 
+
+# Developer & Admin Guide: Annotation Validation
+
+This document describes the internals and configuration of the annotation validation system in Biotope (git-on-top mode).
+
+## Configuration Structure
+
+Annotation validation is configured in `.biotope/config/biotope.yaml` under the `annotation_validation` key:
+
+```yaml
+annotation_validation:
+  enabled: true
+  minimum_required_fields:
+    - name
+    - description
+    - creator
+    - dateCreated
+    - distribution
+  field_validation:
+    name:
+      type: string
+      min_length: 1
+    description:
+      type: string
+      min_length: 10
+    creator:
+      type: object
+      required_keys: [name]
+    dateCreated:
+      type: string
+      format: date
+    distribution:
+      type: array
+      min_length: 1
+```
+
+- **enabled**: Toggle validation on/off.
+- **minimum_required_fields**: List of fields that must be present in each metadata file.
+- **field_validation**: Per-field validation rules (type, min_length, required_keys, etc).
+
+## Validation Logic
+
+Validation is implemented in `biotope/validation.py`:
+- `is_metadata_annotated(metadata, config)` checks if a metadata dict meets requirements.
+- `_validate_field(value, field_name, validation_rules)` applies per-field rules.
+- `get_annotation_status_for_files(biotope_root, file_paths)` returns annotation status for a list of files.
+
+The system supports:
+- Type checks (`string`, `object`, `array`)
+- Minimum length for strings/arrays
+- Required keys for objects
+- ISO date format for date fields
+
+## Extending Validation
+
+To add new validation rules:
+- Update the `field_validation` structure in the config (via CLI or manually).
+- Extend `_validate_field` in `biotope/validation.py` to support new rule types.
+- Add tests for new rules in `tests/commands/test_annotate.py` or a new test file.
+
+## Status Command Integration
+
+- The status command (`biotope/commands/status.py`) uses `get_annotation_status_for_files` to display annotation status for both staged and tracked metadata files.
+- The summary counts annotated/unannotated datasets for quick project health assessment.
+
+## Best Practices
+
+- Set clear, project-appropriate requirements for annotation fields.
+- Use the CLI (`biotope config set-validation`, etc) to manage requirements for reproducibility.
+- Encourage users to check `biotope status` regularly to ensure all datasets are properly annotated before committing.
+- For advanced validation (e.g., regex, cross-field checks), extend the validation module and document new rules for your team.
+
+## Code References
+- `biotope/validation.py`: Validation logic
+- `biotope/commands/status.py`: Status reporting
+- `biotope/commands/config.py`: Admin CLI for validation
+- `docs/git-integration.md`: User-facing documentation
+
+For questions or contributions, see the [CONTRIBUTING.md](../CONTRIBUTING.md). 

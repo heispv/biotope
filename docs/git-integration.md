@@ -241,3 +241,82 @@ biotope check-data
 - **History**: Same log, diff, and status functionality
 
 That's it! Your Git knowledge transfers directly to biotope. The only difference is that you're versioning scientific metadata instead of code. 
+
+## Annotation Validation and Status Reporting
+
+Biotope now supports project-specific annotation requirements, allowing administrators to define what fields must be present in dataset metadata for it to be considered "annotated". This helps ensure data quality and consistency across your project.
+
+### How Annotation Status Works
+
+- The `biotope status` command now shows, for each tracked and staged dataset, whether it is considered annotated (✅) or not (⚠️), based on the current project requirements.
+- The summary section reports how many datasets are annotated and how many are not.
+
+### What is "Annotated"?
+
+A dataset is considered annotated if its metadata file (in `.biotope/datasets/`) contains all required fields, and those fields meet the validation rules set by your project admin. By default, required fields include `name`, `description`, `creator`, `dateCreated`, and `distribution`, but this can be customized.
+
+### Example: Status Output
+
+```
+$ biotope status
+
+[bold blue]Biotope Project Status[/]
+Project: my-biotope
+Location: /path/to/project
+Git Repository: ✅
+
+[bold green]Changes to be committed:[/]
+Status  File                              Annotated
+A       .biotope/datasets/mydata.jsonld   ✅
+
+[bold blue]Tracked Datasets:[/]
+Dataset         Annotated   Status
+mydata          ✅          Complete
+rawdata         ⚠️          Incomplete (2 issues)
+
+[bold]Summary:[/]
+  Staged: 1 file(s) (1 annotated, 0 unannotated)
+  Tracked datasets: 2 (1 annotated, 1 unannotated)
+```
+
+### Customizing Annotation Requirements
+
+Admins can configure what fields are required and how they are validated using the `biotope config` command group.
+
+#### Show Current Requirements
+
+```
+$ biotope config show-validation
+
+[bold blue]Annotation Validation Configuration[/]
+Enabled: ✅
+
+[bold green]Required Fields:[/]
+Field        Type      Validation Rules
+name         string    min_length: 1
+description  string    min_length: 10
+creator      object    required_keys: name
+dateCreated  string    format: date
+distribution array     min_length: 1
+```
+
+#### Add a Required Field
+
+```
+$ biotope config set-validation --field license --type string --min-length 3
+```
+
+#### Remove a Required Field
+
+```
+$ biotope config remove-validation --field license
+```
+
+#### Enable/Disable Validation
+
+```
+$ biotope config toggle-validation --enabled
+$ biotope config toggle-validation --disabled
+```
+
+See also: [Admin documentation](git-integration-dev.md) for advanced configuration and developer details. 

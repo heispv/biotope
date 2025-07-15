@@ -176,7 +176,24 @@ def create_project_structure(directory: Path, config: dict, metadata: dict) -> N
         },
         "checksum_algorithm": "sha256",
         "auto_stage": True,
-        "commit_message_template": "Update metadata: {description}"
+        "commit_message_template": "Update metadata: {description}",
+        "annotation_validation": {
+            "enabled": True,
+            "minimum_required_fields": [
+                "name",
+                "description", 
+                "creator",
+                "dateCreated",
+                "distribution"
+            ],
+            "field_validation": {
+                "name": {"type": "string", "min_length": 1},
+                "description": {"type": "string", "min_length": 10},
+                "creator": {"type": "object", "required_keys": ["name"]},
+                "dateCreated": {"type": "string", "format": "date"},
+                "distribution": {"type": "array", "min_length": 1}
+            }
+        }
     }
     
     (directory / ".biotope" / "config" / "biotope.yaml").write_text(

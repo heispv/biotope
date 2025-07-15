@@ -9,6 +9,12 @@ import click
 from rich.console import Console
 from rich.table import Table
 
+from biotope.validation import (
+    get_annotation_status_for_files,
+    get_all_tracked_files,
+    get_staged_metadata_files,
+)
+
 
 @click.command()
 @click.option(
@@ -62,15 +68,27 @@ def _show_rich_status(biotope_root: Path, console: Console, biotope_only: bool) 
     console.print(f"Location: {biotope_root}")
     console.print(f"Git Repository: {'✅' if _is_git_repo(biotope_root) else '❌'}")
     
-    # Show changes
+    # Get annotation status for staged files
+    staged_metadata_files = get_staged_metadata_files(biotope_root)
+    staged_annotation_status = get_annotation_status_for_files(biotope_root, staged_metadata_files)
+    
+    # Show changes with annotation status
     if git_status["staged"]:
         console.print(f"\n[bold green]Changes to be committed:[/]")
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Status", style="cyan")
         table.add_column("File", style="green")
+        table.add_column("Annotated", style="yellow")
         
         for status, file_path in git_status["staged"]:
-            table.add_row(status, file_path)
+            # Check if this is a metadata file and get annotation status
+            if file_path in staged_annotation_status:
+                is_annotated, _ = staged_annotation_status[file_path]
+                annotation_status = "✅" if is_annotated else "⚠️"
+            else:
+                annotation_status = "—"  # Not a metadata file
+            
+            table.add_row(status, file_path, annotation_status)
         console.print(table)
     
     if git_status["modified"]:
@@ -88,15 +106,48 @@ def _show_rich_status(biotope_root: Path, console: Console, biotope_only: bool) 
         for file_path in git_status["untracked"]:
             console.print(f"  ? {file_path}")
     
+    # Show tracked files with annotation status
+    tracked_metadata_files = get_all_tracked_files(biotope_root)
+    tracked_annotation_status = {}
+    if tracked_metadata_files:
+        tracked_annotation_status = get_annotation_status_for_files(biotope_root, tracked_metadata_files)
+        
+        console.print(f"\n[bold blue]Tracked Datasets:[/]")
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Dataset", style="green")
+        table.add_column("Annotated", style="yellow")
+        table.add_column("Status", style="cyan")
+        
+        for file_path in tracked_metadata_files:
+            dataset_name = Path(file_path).stem
+            if file_path in tracked_annotation_status:
+                is_annotated, errors = tracked_annotation_status[file_path]
+                annotation_status = "✅" if is_annotated else "⚠️"
+                status_text = "Complete" if is_annotated else f"Incomplete ({len(errors)} issues)"
+            else:
+                annotation_status = "❌"
+                status_text = "Error reading metadata"
+            
+            table.add_row(dataset_name, annotation_status, status_text)
+        console.print(table)
+    
     # Summary
     total_staged = len(git_status["staged"])
     total_modified = len(git_status["modified"])
     total_untracked = len(git_status["untracked"])
     
+    # Count annotation status
+    staged_annotated = sum(1 for is_annotated, _ in staged_annotation_status.values() if is_annotated)
+    staged_unannotated = len(staged_annotation_status) - staged_annotated
+    
+    tracked_annotated = sum(1 for is_annotated, _ in tracked_annotation_status.values() if is_annotated)
+    tracked_unannotated = len(tracked_annotation_status) - tracked_annotated
+    
     console.print(f"\n[bold]Summary:[/]")
-    console.print(f"  Staged: {total_staged} file(s)")
+    console.print(f"  Staged: {total_staged} file(s) ({staged_annotated} annotated, {staged_unannotated} unannotated)")
     console.print(f"  Modified: {total_modified} file(s)")
     console.print(f"  Untracked: {total_untracked} file(s)")
+    console.print(f"  Tracked datasets: {len(tracked_metadata_files)} ({tracked_annotated} annotated, {tracked_unannotated} unannotated)")
     
     if total_staged > 0:
         console.print(f"\n💡 Next steps:")
