@@ -8,9 +8,11 @@
 
 _CLI integration for BioCypher ecosystem packages_
 
-Status: early alpha, volatile
+Status: early alpha, volatile, partly vibe-coded
 
-Currently discussed [here](https://github.com/orgs/biocypher/discussions/9)
+Documentation [here](https://biocypher.github.io/biotope/latest/), may be incomplete.
+
+Currently discussed [here](https://github.com/orgs/biocypher/discussions/9).
 
 ## Metadata annotation using Croissant, short guide
 
