@@ -25,6 +25,48 @@ are prototypes for new features. See more information in the API documentation.
 - `biotope get`: Download files and automatically start annotation
 - `biotope annotate`: Annotate your data with consistent metadata in Croissant ML
 
+## Git Integration for Metadata Version Control
+
+Biotope uses a **Git-on-Top** strategy for metadata version control, providing:
+
+- **Version control** for all metadata changes using Git
+- **Collaboration** through standard Git workflows
+- **Data integrity** through checksum verification
+- **Familiar tooling** - all Git tools work seamlessly
+
+### Core Git-Integrated Commands
+
+- `biotope add`: Stage data files for metadata creation
+- `biotope status`: Show current project status
+- `biotope commit`: Commit metadata changes using Git
+- `biotope log`: View commit history
+- `biotope push/pull`: Share metadata with remote repositories
+- `biotope check-data`: Verify data integrity against checksums
+
+### Basic Workflow
+
+```bash
+# Initialize project (with Git)
+biotope init
+
+# Add data files
+biotope add data/raw/experiment.csv
+
+# Create metadata
+biotope annotate interactive --staged
+
+# Commit changes
+biotope commit -m "Add experiment dataset"
+
+# View history
+biotope log --oneline
+```
+
+### Documentation
+
+- **[Git Integration for Users](git-integration.md)**: Learn how to use biotope's Git integration, leveraging your existing Git knowledge
+- **[Git Integration for Developers](git-integration-dev.md)**: Understand the technical implementation and architecture
+
 ## Metadata annotation using Croissant, short guide
 
 The `biotope` package features a metadata annotation assistant using the

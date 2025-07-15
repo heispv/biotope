@@ -1,7 +1,7 @@
 site_name: Biotope
 site_description: Biotope - CLI integration for BioCypher ecosystem packages
 site_author: Sebastian Lobentanzer
-site_url: https://biotope.readthedocs.io/
+site_url: https://biocypher.github.io/biotope/
 
 markdown_extensions:
   - admonition
@@ -41,12 +41,16 @@ theme:
 nav:
   - Home: index.md
   - Learn:
+    - Git Integration: git-integration.md
     - Tutorials:
       - Overview: learn/tutorials/index.md
+      - Add Files: learn/tutorials/add-files.md
       - Get Files: learn/tutorials/get-files.md
       - Annotate Omics: learn/tutorials/annotate-omics.md
   - Reference:
+      - Git Integration (Developer): git-integration-dev.md
       - API Documentation:
+          - Add: api-docs/add.md
           - Annotate: api-docs/annotate.md
           - Build: api-docs/build.md
           - Chat: api-docs/chat.md

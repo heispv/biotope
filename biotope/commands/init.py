@@ -17,14 +17,7 @@ import yaml
 )
 def init(dir: Path) -> None:  # noqa: A002
     """
-    Initialize a new biotope with interactive configuration.
-
-    Args:
-        dir: Directory to initialize the project in
-
-    Raises:
-        click.Abort: If a biotope project already exists in the directory.
-
+    Initialize a new biotope with interactive configuration in the specified directory.
     """
     # Check if .biotope directory already exists
     biotope_dir = dir / ".biotope"
@@ -113,6 +106,13 @@ def init(dir: Path) -> None:  # noqa: A002
     try:
         dir.mkdir(parents=True, exist_ok=True)
         create_project_structure(dir, user_config, metadata)
+        
+        # Initialize Git if not already initialized
+        if not _is_git_repo(dir):
+            if click.confirm("\nWould you like to initialize Git for version control?", default=True):
+                _init_git_repo(dir)
+                click.echo("✅ Git repository initialized")
+        
         click.echo("\n✨ Biotope established successfully! ✨")
         click.echo(
             f"\nYour biotope '{project_name}' has been established. Make sure to water regularly.",
@@ -120,7 +120,9 @@ def init(dir: Path) -> None:  # noqa: A002
         click.echo("\nNext steps:")
         click.echo("1. Review the configuration in config/biotope.yaml")
         click.echo("2. Add your knowledge sources")
-        click.echo("3. Run 'biotope build' to create your knowledge graph")
+        click.echo("3. Run 'biotope add <file>' to stage data files")
+        click.echo("4. Run 'biotope annotate interactive --staged' to create metadata")
+        click.echo("5. Run 'biotope commit -m \"message\"' to save changes")
     except (OSError, yaml.YAMLError) as e:
         click.echo(f"\n❌ Error initializing project: {e!s}", err=True)
         raise click.Abort from e
@@ -136,10 +138,13 @@ def create_project_structure(directory: Path, config: dict, metadata: dict) -> N
         metadata: Internal metadata dictionary
 
     """
-    # Create directory structure
+    # Create directory structure - git-on-top layout
     dirs = [
         ".biotope",
-        ".biotope/logs",
+        ".biotope/config",  # Configuration for biotope project
+        ".biotope/datasets",  # Stores Croissant ML JSON-LD files
+        ".biotope/workflows",  # Bioinformatics workflow definitions
+        ".biotope/logs",  # Command execution logs
         "config",
         "data",
         "data/raw",
@@ -160,10 +165,30 @@ def create_project_structure(directory: Path, config: dict, metadata: dict) -> N
         yaml.dump(metadata, default_flow_style=False),
     )
 
+    # Create initial biotope config
+    biotope_config = {
+        "version": "1.0",
+        "croissant_schema_version": "1.0",
+        "default_metadata_template": "scientific",
+        "data_storage": {
+            "type": "local",
+            "path": "data"
+        },
+        "checksum_algorithm": "sha256",
+        "auto_stage": True,
+        "commit_message_template": "Update metadata: {description}"
+    }
+    
+    (directory / ".biotope" / "config" / "biotope.yaml").write_text(
+        yaml.dump(biotope_config, default_flow_style=False),
+    )
+
+    # Note: No custom refs needed - Git handles all version control
+
     # Create README
     readme_content = f"""# {config["project"]["name"]}
 
-A BioCypher knowledge graph project.
+A BioCypher knowledge graph project managed with biotope.
 
 ## Project Structure
 
@@ -173,5 +198,76 @@ A BioCypher knowledge graph project.
   - `processed/`: Processed data
 - `schemas/`: Knowledge schema definitions
 - `outputs/`: Generated knowledge graphs
+- `.biotope/`: Biotope project management (Git-tracked)
+  - `datasets/`: Croissant ML metadata files
+  - `workflows/`: Bioinformatics workflow definitions
+  - `config/`: Biotope configuration
+  - `logs/`: Command execution history
+
+## Git Integration
+
+This project uses Git for metadata version control. The `.biotope/` directory is tracked by Git, allowing you to:
+- Version control your metadata changes
+- Collaborate with others on metadata
+- Use standard Git tools and workflows
+
+## Getting Started
+
+1. Add data files: `biotope add <data_file>`
+2. Create metadata: `biotope annotate interactive --staged`
+3. Check status: `biotope status`
+4. Commit changes: `biotope commit -m "Add new dataset"`
+5. View history: `biotope log`
+6. Push/pull: `biotope push` / `biotope pull`
+
+## Standard Git Commands
+
+You can also use standard Git commands:
+- `git status` - See all project changes
+- `git log -- .biotope/` - View metadata history
+- `git diff .biotope/` - See metadata changes
 """
     (directory / "README.md").write_text(readme_content)
+
+
+def _is_git_repo(directory: Path) -> bool:
+    """Check if directory is a Git repository."""
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            cwd=directory,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def _init_git_repo(directory: Path) -> None:
+    """Initialize a Git repository in the directory."""
+    try:
+        import subprocess
+        subprocess.run(
+            ["git", "init"],
+            cwd=directory,
+            check=True
+        )
+        
+        # Create initial commit
+        subprocess.run(
+            ["git", "add", "."],
+            cwd=directory,
+            check=True
+        )
+        
+        subprocess.run(
+            ["git", "commit", "-m", "Initial biotope project setup"],
+            cwd=directory,
+            check=True
+        )
+        
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        click.echo(f"⚠️  Warning: Could not initialize Git: {e}")

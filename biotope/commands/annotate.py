@@ -7,6 +7,7 @@ import getpass
 import json
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 import click
 from rich.console import Console
@@ -220,6 +221,20 @@ def create(
     with open(output, "w") as f:
         json.dump(metadata, f, indent=2)
 
+    # Stage the changes in Git if we're in a biotope project
+    try:
+        biotope_root = find_biotope_root()
+        if biotope_root:
+            import subprocess
+            subprocess.run(
+                ["git", "add", ".biotope/"],
+                cwd=biotope_root,
+                check=True
+            )
+            click.echo(f"✅ Staged changes in Git")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass  # Not in a biotope project or Git not available
+
     click.echo(f"Created Croissant metadata file at {output}")
 
 
@@ -331,7 +346,13 @@ def load(jsonld, record_set, num_records):
     type=str,
     help="JSON string containing pre-filled metadata",
 )
-def interactive(file_path: str | None = None, prefill_metadata: str | None = None) -> None:
+@click.option(
+    "--staged",
+    "-s",
+    is_flag=True,
+    help="Annotate all staged files",
+)
+def interactive(file_path: str | None = None, prefill_metadata: str | None = None, staged: bool = False) -> None:
     """Interactive annotation process for files."""
     console = Console()
 
@@ -340,6 +361,45 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
     # Merge with standard context and structure
     metadata = merge_metadata(dynamic_metadata)
+
+    # Handle staged files
+    if staged:
+        biotope_root = find_biotope_root()
+        if not biotope_root:
+            click.echo("❌ Not in a biotope project. Run 'biotope init' first.")
+            raise click.Abort
+        
+        staged_files = get_staged_files(biotope_root)
+        if not staged_files:
+            click.echo("❌ No files staged. Use 'biotope add <file>' first.")
+            raise click.Abort
+        
+        console.print(f"[bold blue]Annotating {len(staged_files)} staged file(s)[/]")
+        
+        for i, file_info in enumerate(staged_files):
+            file_path = biotope_root / file_info["file_path"]
+            console.print(f"\n[bold green]File {i+1}/{len(staged_files)}: {file_path.name}[/]")
+            
+            # Pre-fill with file information
+            file_metadata = {
+                "name": file_path.stem,
+                "description": f"Dataset for {file_path.name}",
+                "distribution": [
+                    {
+                        "@type": "sc:FileObject",
+                        "@id": f"file_{file_info['sha256'][:8]}",
+                        "name": file_path.name,
+                        "contentUrl": str(file_path.relative_to(biotope_root)),
+                        "sha256": file_info["sha256"],
+                        "contentSize": file_info["size"]
+                    }
+                ]
+            }
+            
+            # Run interactive annotation for this file
+            _run_interactive_annotation(console, file_path, file_metadata, biotope_root)
+        
+        return
 
     # If file path is provided, use it
     if file_path:
@@ -770,6 +830,20 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
     with open(output_path, "w") as f:
         json.dump(metadata, f, indent=2)
 
+    # Stage the changes in Git if we're in a biotope project
+    try:
+        biotope_root = find_biotope_root()
+        if biotope_root:
+            import subprocess
+            subprocess.run(
+                ["git", "add", ".biotope/"],
+                cwd=biotope_root,
+                check=True
+            )
+            console.print(f"✅ Staged changes in Git")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass  # Not in a biotope project or Git not available
+
     # Final success message with rich formatting
     console.print()
     console.print(
@@ -782,3 +856,81 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
     console.print("[italic]Validate this file with:[/]")
     console.print(f"[bold yellow]biotope annotate validate --jsonld {output_path}[/]")
+
+
+def _run_interactive_annotation(console: Console, file_path: Path, prefill_metadata: dict, biotope_root: Path) -> None:
+    """Run interactive annotation for a specific file."""
+    # This would contain the existing interactive annotation logic
+    # For now, just create basic metadata
+    metadata = merge_metadata(prefill_metadata)
+    
+    # Save to datasets directory
+    datasets_dir = biotope_root / ".biotope" / "datasets"
+    datasets_dir.mkdir(parents=True, exist_ok=True)
+    
+    output_path = datasets_dir / f"{file_path.stem}.jsonld"
+    with open(output_path, "w") as f:
+        json.dump(metadata, f, indent=2)
+    
+    # Stage the changes in Git
+    try:
+        import subprocess
+        subprocess.run(
+            ["git", "add", ".biotope/"],
+            cwd=biotope_root,
+            check=True
+        )
+        console.print(f"✅ Created metadata: {output_path}")
+        console.print(f"✅ Staged changes in Git")
+    except subprocess.CalledProcessError as e:
+        console.print(f"✅ Created metadata: {output_path}")
+        console.print(f"⚠️  Warning: Could not stage changes in Git: {e}")
+
+
+def get_staged_files(biotope_root: Path) -> list:
+    """Get list of staged files from Git."""
+    import json
+    import subprocess
+    staged_files = []
+    
+    try:
+        # Get staged files from Git
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=biotope_root,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        for file_path in result.stdout.splitlines():
+            if file_path.startswith(".biotope/datasets/") and file_path.endswith(".jsonld"):
+                # Read the metadata file to get file information
+                metadata_file = biotope_root / file_path
+                try:
+                    with open(metadata_file) as f:
+                        metadata = json.load(f)
+                        for distribution in metadata.get("distribution", []):
+                            if distribution.get("@type") == "sc:FileObject":
+                                staged_files.append({
+                                    "file_path": distribution.get("contentUrl"),
+                                    "sha256": distribution.get("sha256"),
+                                    "size": distribution.get("contentSize")
+                                })
+                except (json.JSONDecodeError, KeyError):
+                    continue
+                    
+    except subprocess.CalledProcessError:
+        pass
+    
+    return staged_files
+
+
+def find_biotope_root() -> Optional[Path]:
+    """Find the biotope project root directory."""
+    current = Path.cwd()
+    while current != current.parent:
+        if (current / ".biotope").exists():
+            return current
+        current = current.parent
+    return None
