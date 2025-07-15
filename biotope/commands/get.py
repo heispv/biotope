@@ -13,6 +13,8 @@ import click
 import requests
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
+from biotope.utils import find_biotope_root, is_git_repo
+
 
 # Add custom MIME type mappings
 mimetypes.add_type("chemical/seq-na-fasta", ".fasta")
@@ -78,29 +80,7 @@ def download_file(url: str, output_dir: Path) -> Path | None:
         return None
 
 
-def find_biotope_root() -> Path | None:
-    """Find the biotope project root directory."""
-    current = Path.cwd()
-    while current != current.parent:
-        if (current / ".biotope").exists():
-            return current
-        current = current.parent
-    return None
 
-
-def _is_git_repo(directory: Path) -> bool:
-    """Check if directory is a Git repository."""
-    try:
-        subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
-            cwd=directory,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
 
 
 def _call_biotope_add(file_path: Path, biotope_root: Path) -> bool:
@@ -159,7 +139,7 @@ def get(url: str, output_dir: str, no_add: bool) -> None:
         raise click.Abort
 
     # Check if we're in a Git repository
-    if not _is_git_repo(biotope_root):
+    if not is_git_repo(biotope_root):
         click.echo("❌ Not in a Git repository. Initialize Git first with 'git init'.")
         raise click.Abort
 

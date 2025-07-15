@@ -1,6 +1,7 @@
 """Tests for the add command."""
 
 import json
+import os
 import subprocess
 from pathlib import Path
 from unittest import mock
@@ -10,13 +11,12 @@ from click.testing import CliRunner
 
 from biotope.commands.add import (
     _add_file,
-    _is_git_repo,
     _stage_git_changes,
     add,
     calculate_file_checksum,
-    find_biotope_root,
     is_file_tracked,
 )
+from biotope.utils import is_git_repo, find_biotope_root
 
 
 @pytest.fixture
@@ -116,10 +116,10 @@ def test_is_git_repo(git_repo):
     """Test Git repository detection."""
     with mock.patch("subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
-        assert _is_git_repo(git_repo) is True
+        assert is_git_repo(git_repo) is True
         
         mock_run.side_effect = subprocess.CalledProcessError(1, "git")
-        assert _is_git_repo(git_repo) is False
+        assert is_git_repo(git_repo) is False
 
 
 def test_stage_git_changes(git_repo):
@@ -320,8 +320,8 @@ def test_add_file_relative_path_already_tracked(git_repo):
         os.chdir(original_cwd)
 
 
-@mock.patch("biotope.commands.add.find_biotope_root")
-@mock.patch("biotope.commands.add._is_git_repo")
+@mock.patch("biotope.utils.find_biotope_root")
+@mock.patch("biotope.utils.is_git_repo")
 @mock.patch("biotope.commands.add._add_file")
 @mock.patch("biotope.commands.add._stage_git_changes")
 def test_add_command_absolute_path(
@@ -338,15 +338,17 @@ def test_add_command_absolute_path(
     target_file.write_text(sample_file.read_text())
     
     # Run command
-    result = runner.invoke(add, [str(target_file)])
+    with runner.isolated_filesystem():
+        os.chdir(git_repo)
+        result = runner.invoke(add, [str(target_file)])
     
     assert result.exit_code == 0
     mock_add_file.assert_called_once()
     mock_stage.assert_called_once_with(git_repo)
 
 
-@mock.patch("biotope.commands.add.find_biotope_root")
-@mock.patch("biotope.commands.add._is_git_repo")
+@mock.patch("biotope.utils.find_biotope_root")
+@mock.patch("biotope.utils.is_git_repo")
 @mock.patch("biotope.commands.add._add_file")
 @mock.patch("biotope.commands.add._stage_git_changes")
 def test_add_command_relative_path(
@@ -385,7 +387,7 @@ def test_add_command_relative_path(
         os.chdir(original_cwd)
 
 
-@mock.patch("biotope.commands.add.find_biotope_root")
+@mock.patch("biotope.utils.find_biotope_root")
 def test_add_command_no_biotope_project(mock_find_root, runner, tmp_path):
     """Test add command when not in a biotope project."""
     mock_find_root.return_value = None
@@ -400,19 +402,24 @@ def test_add_command_no_biotope_project(mock_find_root, runner, tmp_path):
     assert "Not in a biotope project" in result.output
 
 
-@mock.patch("biotope.commands.add.find_biotope_root")
-@mock.patch("biotope.commands.add._is_git_repo")
+@mock.patch("biotope.utils.find_biotope_root")
+@mock.patch("biotope.utils.is_git_repo")
 def test_add_command_no_git_repo(mock_is_git, mock_find_root, runner, biotope_project):
     """Test add command when not in a Git repository."""
     mock_find_root.return_value = biotope_project
     mock_is_git.return_value = False
-    
+
     # Create a test file that exists
     test_file = biotope_project / "test.txt"
     test_file.write_text("test content")
     
-    result = runner.invoke(add, [str(test_file)])
-    
+    # Ensure .biotope directory exists so the CLI can find the project
+    (biotope_project / ".biotope").mkdir(exist_ok=True)
+
+    result = None
+    with runner.isolated_filesystem():
+        os.chdir(biotope_project)
+        result = runner.invoke(add, [str(test_file)])
     assert result.exit_code != 0
     assert "Not in a Git repository" in result.output
 
@@ -425,8 +432,8 @@ def test_add_command_no_paths(runner):
     assert "No paths specified" in result.output
 
 
-@mock.patch("biotope.commands.add.find_biotope_root")
-@mock.patch("biotope.commands.add._is_git_repo")
+@mock.patch("biotope.utils.find_biotope_root")
+@mock.patch("biotope.utils.is_git_repo")
 @mock.patch("biotope.commands.add._add_file")
 @mock.patch("biotope.commands.add._stage_git_changes")
 def test_add_command_recursive(
@@ -452,7 +459,9 @@ def test_add_command_recursive(
     file2.write_text("content2")
     
     # Run command with recursive flag
-    result = runner.invoke(add, ["--recursive", str(data_dir)])
+    with runner.isolated_filesystem():
+        os.chdir(git_repo)
+        result = runner.invoke(add, ["--recursive", str(data_dir)])
     
     assert result.exit_code == 0
     # Should be called twice (once for each file)
@@ -460,8 +469,8 @@ def test_add_command_recursive(
     mock_stage.assert_called_once_with(git_repo)
 
 
-@mock.patch("biotope.commands.add.find_biotope_root")
-@mock.patch("biotope.commands.add._is_git_repo")
+@mock.patch("biotope.utils.find_biotope_root")
+@mock.patch("biotope.utils.is_git_repo")
 @mock.patch("biotope.commands.add._add_file")
 @mock.patch("biotope.commands.add._stage_git_changes")
 def test_add_command_directory_without_recursive(
@@ -477,7 +486,9 @@ def test_add_command_directory_without_recursive(
     data_dir.mkdir()
     
     # Run command without recursive flag
-    result = runner.invoke(add, [str(data_dir)])
+    with runner.isolated_filesystem():
+        os.chdir(git_repo)
+        result = runner.invoke(add, [str(data_dir)])
     
     assert result.exit_code == 0
     # Should not call _add_file for directories
@@ -487,8 +498,8 @@ def test_add_command_directory_without_recursive(
     assert "Skipping directory" in result.output
 
 
-@mock.patch("biotope.commands.add.find_biotope_root")
-@mock.patch("biotope.commands.add._is_git_repo")
+@mock.patch("biotope.utils.find_biotope_root")
+@mock.patch("biotope.utils.is_git_repo")
 @mock.patch("biotope.commands.add._add_file")
 @mock.patch("biotope.commands.add._stage_git_changes")
 def test_add_command_mixed_success_and_failure(
@@ -514,7 +525,9 @@ def test_add_command_mixed_success_and_failure(
     mock_add_file.side_effect = mock_add_file_side_effect
     
     # Run command
-    result = runner.invoke(add, [str(target_file), str(another_file)])
+    with runner.isolated_filesystem():
+        os.chdir(git_repo)
+        result = runner.invoke(add, [str(target_file), str(another_file)])
     
     assert result.exit_code == 0
     assert mock_add_file.call_count == 2

@@ -14,10 +14,9 @@ from biotope.commands.get import (
     calculate_sha256,
     detect_file_type,
     download_file,
-    find_biotope_root,
-    _is_git_repo,
     _call_biotope_add,
 )
+from biotope.utils import is_git_repo, find_biotope_root
 
 
 @pytest.fixture
@@ -161,12 +160,12 @@ def test_find_biotope_root_not_found(tmp_path):
 
 def test_is_git_repo(biotope_project):
     """Test Git repository detection."""
-    assert _is_git_repo(biotope_project) is True
+    assert is_git_repo(biotope_project) is True
 
 
 def test_is_git_repo_not_git(tmp_path):
     """Test Git repository detection when not a Git repo."""
-    assert _is_git_repo(tmp_path) is False
+    assert is_git_repo(tmp_path) is False
 
 
 @mock.patch("biotope.commands.add._add_file")
@@ -219,7 +218,7 @@ def test_get_command_success(mock_add, mock_download, runner, biotope_project):
     mock_add.return_value = True
     
     with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
-        with mock.patch("biotope.commands.get._is_git_repo", return_value=True):
+        with mock.patch("biotope.commands.get.is_git_repo", return_value=True):
             result = runner.invoke(get, ["https://example.com/test.txt"])
     
     assert result.exit_code == 0
@@ -241,7 +240,7 @@ def test_get_command_download_failure(mock_download, runner, biotope_project):
     mock_download.return_value = None
     
     with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
-        with mock.patch("biotope.commands.get._is_git_repo", return_value=True):
+        with mock.patch("biotope.commands.get.is_git_repo", return_value=True):
             result = runner.invoke(get, ["https://example.com/test.txt"])
     
     assert result.exit_code == 1  # Should abort on download failure
@@ -261,7 +260,7 @@ def test_get_command_add_failure(mock_add, mock_download, runner, biotope_projec
     mock_add.return_value = False
     
     with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
-        with mock.patch("biotope.commands.get._is_git_repo", return_value=True):
+        with mock.patch("biotope.commands.get.is_git_repo", return_value=True):
             result = runner.invoke(get, ["https://example.com/test.txt"])
     
     assert result.exit_code == 0
@@ -280,7 +279,7 @@ def test_get_command_no_add_flag(mock_download, runner, biotope_project):
     mock_download.return_value = downloaded_file
     
     with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
-        with mock.patch("biotope.commands.get._is_git_repo", return_value=True):
+        with mock.patch("biotope.commands.get.is_git_repo", return_value=True):
             result = runner.invoke(get, ["https://example.com/test.txt", "--no-add"])
     
     assert result.exit_code == 0
@@ -305,7 +304,7 @@ def test_get_command_not_in_git_repo(runner, biotope_project):
     from biotope.commands.get import get
     
     with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
-        with mock.patch("biotope.commands.get._is_git_repo", return_value=False):
+        with mock.patch("biotope.commands.get.is_git_repo", return_value=False):
             result = runner.invoke(get, ["https://example.com/test.txt"])
     
     assert result.exit_code == 1
@@ -324,7 +323,7 @@ def test_get_command_custom_output_dir(mock_add, mock_download, runner, biotope_
     mock_add.return_value = True
     
     with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
-        with mock.patch("biotope.commands.get._is_git_repo", return_value=True):
+        with mock.patch("biotope.commands.get.is_git_repo", return_value=True):
             result = runner.invoke(get, ["https://example.com/test.txt", "--output-dir", str(custom_dir)])
     
     assert result.exit_code == 0

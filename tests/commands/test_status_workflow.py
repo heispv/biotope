@@ -40,7 +40,7 @@ def git_repo(biotope_project):
 
 
 @mock.patch("biotope.commands.status.find_biotope_root")
-@mock.patch("biotope.commands.status._is_git_repo")
+@mock.patch("biotope.utils.is_git_repo")
 @mock.patch("biotope.commands.status._get_git_status")
 def test_status_suggests_biotope_commands_not_git(
     mock_get_status, mock_is_git, mock_find_root, runner, git_repo
@@ -70,7 +70,7 @@ def test_status_suggests_biotope_commands_not_git(
 
 
 @mock.patch("biotope.commands.status.find_biotope_root")
-@mock.patch("biotope.commands.status._is_git_repo")
+@mock.patch("biotope.utils.is_git_repo")
 @mock.patch("biotope.commands.status._get_git_status")
 def test_status_suggests_commit_when_staged(
     mock_get_status, mock_is_git, mock_find_root, runner, git_repo

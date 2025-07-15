@@ -65,7 +65,7 @@ def test_get_command_full_workflow(biotope_project, sample_data_file):
         
         # Run get command
         with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
-            with mock.patch("biotope.commands.get._is_git_repo", return_value=True):
+            with mock.patch("biotope.utils.is_git_repo", return_value=True):
                 result = runner.invoke(get, ["https://example.com/sample_data.csv"])
         
         assert result.exit_code == 0
@@ -117,7 +117,7 @@ def test_get_command_with_no_add_flag(biotope_project, sample_data_file):
         mock_download.return_value = downloaded_file
         
         with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
-            with mock.patch("biotope.commands.get._is_git_repo", return_value=True):
+            with mock.patch("biotope.utils.is_git_repo", return_value=True):
                 result = runner.invoke(get, ["https://example.com/sample_data.csv", "--no-add"])
         
         assert result.exit_code == 0
@@ -147,7 +147,7 @@ def test_get_command_custom_output_directory(biotope_project, sample_data_file):
         mock_download.return_value = downloaded_file
         
         with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
-            with mock.patch("biotope.commands.get._is_git_repo", return_value=True):
+            with mock.patch("biotope.utils.is_git_repo", return_value=True):
                 result = runner.invoke(get, [
                     "https://example.com/sample_data.csv",
                     "--output-dir", str(custom_dir)
@@ -173,7 +173,7 @@ def test_get_command_download_failure(biotope_project):
     
     with mock.patch("biotope.commands.get.download_file", return_value=None):
         with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
-            with mock.patch("biotope.commands.get._is_git_repo", return_value=True):
+            with mock.patch("biotope.utils.is_git_repo", return_value=True):
                 result = runner.invoke(get, ["https://example.com/nonexistent.csv"])
         
         assert result.exit_code == 1
@@ -229,7 +229,7 @@ def test_get_command_with_content_disposition_header(biotope_project):
     try:
         with mock.patch("biotope.commands.get.download_file", side_effect=mock_download):
             with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
-                with mock.patch("biotope.commands.get._is_git_repo", return_value=True):
+                with mock.patch("biotope.utils.is_git_repo", return_value=True):
                     result = runner.invoke(get, ["https://example.com/data"])
         
         assert result.exit_code == 0

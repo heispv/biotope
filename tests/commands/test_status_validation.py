@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 from click.testing import CliRunner
+import os
 
 from biotope.commands.status import status
 
@@ -95,21 +96,20 @@ def test_status_shows_annotation_status_for_add_metadata(runner, git_repo):
         json.dump(incomplete_metadata, f)
     
     # Mock Git status to show this file as tracked
-    with mock.patch("biotope.commands.status.find_biotope_root", return_value=git_repo), \
-         mock.patch("biotope.commands.status._is_git_repo", return_value=True), \
+    with mock.patch("biotope.utils.find_biotope_root", return_value=git_repo), \
          mock.patch("biotope.commands.status._get_git_status", return_value={
              "staged": [],
              "modified": [],
              "untracked": []
          }):
-        
-        # Run status command
-        result = runner.invoke(status)
-        
-        # Should show the file as unannotated (⚠️)
-        assert result.exit_code == 0
-        assert "experiment3" in result.output
-        assert "⚠️" in result.output or "Incomplete" in result.output
+        with runner.isolated_filesystem():
+            os.chdir(git_repo)
+            # Run status command in the correct working directory
+            result = runner.invoke(status)
+            # Should show the file as unannotated (⚠️)
+            assert result.exit_code == 0
+            assert "experiment3" in result.output
+            assert "⚠️" in result.output or "Incomplete" in result.output
 
 
 def test_status_shows_annotation_status_for_complete_metadata(runner, git_repo):
@@ -170,18 +170,17 @@ def test_status_shows_annotation_status_for_complete_metadata(runner, git_repo):
         json.dump(complete_metadata, f)
     
     # Mock Git status to show this file as tracked
-    with mock.patch("biotope.commands.status.find_biotope_root", return_value=git_repo), \
-         mock.patch("biotope.commands.status._is_git_repo", return_value=True), \
+    with mock.patch("biotope.utils.find_biotope_root", return_value=git_repo), \
          mock.patch("biotope.commands.status._get_git_status", return_value={
              "staged": [],
              "modified": [],
              "untracked": []
          }):
-        
-        # Run status command
-        result = runner.invoke(status)
-        
-        # Should show the file as annotated (✅)
-        assert result.exit_code == 0
-        assert "experiment3" in result.output
-        assert "✅" in result.output or "Complete" in result.output 
+        with runner.isolated_filesystem():
+            os.chdir(git_repo)
+            # Run status command in the correct working directory
+            result = runner.invoke(status)
+            # Should show the file as annotated (✅)
+            assert result.exit_code == 0
+            assert "experiment3" in result.output
+            assert "✅" in result.output or "Complete" in result.output 

@@ -14,6 +14,7 @@ from biotope.validation import (
     get_all_tracked_files,
     get_staged_metadata_files,
 )
+from biotope.utils import find_biotope_root, is_git_repo
 
 
 @click.command()
@@ -47,7 +48,7 @@ def status(porcelain: bool, biotope_only: bool) -> None:
         raise click.Abort
 
     # Check if we're in a Git repository
-    if not _is_git_repo(biotope_root):
+    if not is_git_repo(biotope_root):
         click.echo("❌ Not in a Git repository. Initialize Git first with 'git init'.")
         raise click.Abort
 
@@ -66,7 +67,7 @@ def _show_rich_status(biotope_root: Path, console: Console, biotope_only: bool) 
     console.print(f"\n[bold blue]Biotope Project Status[/]")
     console.print(f"Project: {biotope_root.name}")
     console.print(f"Location: {biotope_root}")
-    console.print(f"Git Repository: {'✅' if _is_git_repo(biotope_root) else '❌'}")
+    console.print(f"Git Repository: {'✅' if is_git_repo(biotope_root) else '❌'}")
     
     # Get annotation status for staged files
     staged_metadata_files = get_staged_metadata_files(biotope_root)
@@ -219,26 +220,4 @@ def _get_git_status(biotope_root: Path, biotope_only: bool) -> Dict[str, List]:
         return {"staged": [], "modified": [], "untracked": []}
 
 
-def _is_git_repo(directory: Path) -> bool:
-    """Check if directory is a Git repository."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
-            cwd=directory,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        return True
-    except subprocess.CalledProcessError:
-        return False
-
-
-def find_biotope_root() -> Optional[Path]:
-    """Find the biotope project root directory."""
-    current = Path.cwd()
-    while current != current.parent:
-        if (current / ".biotope").exists():
-            return current
-        current = current.parent
-    return None 
+ 

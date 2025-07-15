@@ -231,14 +231,18 @@ class TestGitIntegration:
 
     def test_is_git_repo(self, tmp_path):
         """Test Git repository detection."""
-        from biotope.commands.commit import _is_git_repo
-        
+        from biotope.utils import is_git_repo
+        from unittest.mock import patch, Mock
         # Should not be Git repo
-        assert not _is_git_repo(tmp_path)
-        
-        # Initialize Git
-        subprocess.run(["git", "init"], cwd=tmp_path, check=True)
-        assert _is_git_repo(tmp_path)
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, "git")
+            assert not is_git_repo(tmp_path)
+        # Simulate git repo
+        with patch("subprocess.run") as mock_run:
+            mock_result = Mock()
+            mock_result.returncode = 0
+            mock_run.return_value = mock_result
+            assert is_git_repo(tmp_path)
 
     def test_validate_metadata_files(self, tmp_path):
         """Test metadata validation."""

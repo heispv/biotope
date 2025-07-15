@@ -6,6 +6,8 @@ from pathlib import Path
 import click
 import yaml
 
+from biotope.utils import is_git_repo
+
 
 @click.command()
 @click.option(
@@ -108,7 +110,7 @@ def init(dir: Path) -> None:  # noqa: A002
         create_project_structure(dir, user_config, metadata)
         
         # Initialize Git if not already initialized
-        if not _is_git_repo(dir):
+        if not is_git_repo(dir):
             if click.confirm("\nWould you like to initialize Git for version control?", default=True):
                 _init_git_repo(dir)
                 click.echo("✅ Git repository initialized")
@@ -247,20 +249,7 @@ You can also use standard Git commands:
     (directory / "README.md").write_text(readme_content)
 
 
-def _is_git_repo(directory: Path) -> bool:
-    """Check if directory is a Git repository."""
-    try:
-        import subprocess
-        result = subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
-            cwd=directory,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+
 
 
 def _init_git_repo(directory: Path) -> None:

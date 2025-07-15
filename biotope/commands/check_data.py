@@ -9,6 +9,8 @@ import click
 from rich.console import Console
 from rich.table import Table
 
+from biotope.utils import find_biotope_root
+
 
 @click.command()
 @click.option(
@@ -199,11 +201,4 @@ def _display_check_results(results: List[Dict], console: Console, fix: bool) -> 
         console.print("Some files referenced in metadata are missing from disk")
 
 
-def find_biotope_root() -> Optional[Path]:
-    """Find the biotope project root directory."""
-    current = Path.cwd()
-    while current != current.parent:
-        if (current / ".biotope").exists():
-            return current
-        current = current.parent
-    return None 
+ 

@@ -9,6 +9,8 @@ import click
 from rich.console import Console
 from rich.table import Table
 
+from biotope.utils import find_biotope_root, is_git_repo
+
 
 @click.command()
 @click.option(
@@ -58,7 +60,7 @@ def log(oneline: bool, max_count: Optional[int], since: Optional[str], author: O
         raise click.Abort
 
     # Check if we're in a Git repository
-    if not _is_git_repo(biotope_root):
+    if not is_git_repo(biotope_root):
         click.echo("❌ Not in a Git repository. Initialize Git first with 'git init'.")
         raise click.Abort
 
@@ -188,26 +190,4 @@ def _get_commit_files(biotope_root: Path, commit_hash: str, biotope_only: bool) 
         return []
 
 
-def _is_git_repo(directory: Path) -> bool:
-    """Check if directory is a Git repository."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
-            cwd=directory,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        return True
-    except subprocess.CalledProcessError:
-        return False
-
-
-def find_biotope_root() -> Optional[Path]:
-    """Find the biotope project root directory."""
-    current = Path.cwd()
-    while current != current.parent:
-        if (current / ".biotope").exists():
-            return current
-        current = current.parent
-    return None 
+ 

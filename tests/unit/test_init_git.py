@@ -41,9 +41,9 @@ class TestInitWithGit:
 
         # Test the git integration functions directly
         with patch("subprocess.run", side_effect=mock_subprocess_run) as mock_run:
-            # Test _is_git_repo function
-            from biotope.commands.init import _is_git_repo
-            assert not _is_git_repo(tmp_path)  # Should return False when git rev-parse fails
+            # Test is_git_repo function
+            from biotope.utils import is_git_repo
+            assert not is_git_repo(tmp_path)  # Should return False when git rev-parse fails
             
             # Test _init_git_repo function
             from biotope.commands.init import _init_git_repo
@@ -114,11 +114,10 @@ class TestInitWithGit:
 
         with patch("subprocess.run", side_effect=mock_subprocess_side_effect):
             # Test the git integration functions directly
-            from biotope.commands.init import _is_git_repo, _init_git_repo
-            
-            # Test _is_git_repo function
-            assert not _is_git_repo(tmp_path)  # Should return False when git not found
-            
+            from biotope.utils import is_git_repo
+            from biotope.commands.init import _init_git_repo
+            # Test is_git_repo function
+            assert not is_git_repo(tmp_path)  # Should return False when git not found
             # Test _init_git_repo function - should handle FileNotFoundError gracefully
             _init_git_repo(tmp_path)  # Should not raise an exception
             

@@ -9,6 +9,8 @@ from typing import Dict, List, Optional
 import click
 import yaml
 
+from biotope.utils import find_biotope_root, is_git_repo
+
 
 @click.command()
 @click.option(
@@ -52,7 +54,7 @@ def commit(message: str, author: Optional[str], no_verify: bool, amend: bool) ->
         raise click.Abort
 
     # Check if we're in a Git repository
-    if not _is_git_repo(biotope_root):
+    if not is_git_repo(biotope_root):
         click.echo("❌ Not in a Git repository. Initialize Git first with 'git init'.")
         raise click.Abort
 
@@ -78,19 +80,7 @@ def commit(message: str, author: Optional[str], no_verify: bool, amend: bool) ->
         click.echo("❌ Failed to create commit.")
 
 
-def _is_git_repo(directory: Path) -> bool:
-    """Check if directory is a Git repository."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
-            cwd=directory,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        return True
-    except subprocess.CalledProcessError:
-        return False
+
 
 
 def _validate_metadata_files(biotope_root: Path) -> bool:
@@ -204,11 +194,4 @@ def _create_git_commit(
         return None
 
 
-def find_biotope_root() -> Optional[Path]:
-    """Find the biotope project root directory."""
-    current = Path.cwd()
-    while current != current.parent:
-        if (current / ".biotope").exists():
-            return current
-        current = current.parent
-    return None 
+ 

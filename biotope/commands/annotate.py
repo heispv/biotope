@@ -16,6 +16,8 @@ from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
+from biotope.utils import find_biotope_root
+
 
 def get_standard_context() -> dict:
     """Get the standard Croissant context."""
@@ -1179,11 +1181,4 @@ def get_staged_files(biotope_root: Path) -> list:
     return staged_files
 
 
-def find_biotope_root() -> Optional[Path]:
-    """Find the biotope project root directory."""
-    current = Path.cwd()
-    while current != current.parent:
-        if (current / ".biotope").exists():
-            return current
-        current = current.parent
-    return None
+
