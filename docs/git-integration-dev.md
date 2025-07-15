@@ -199,19 +199,158 @@ except subprocess.CalledProcessError as e:
 
 ### Metadata Validation
 
-Before committing, metadata is validated:
+All metadata is validated against the Croissant ML schema before being committed. The validation process checks:
+
+1. **Required Fields**: Ensures all minimum required fields are present
+2. **Field Types**: Validates data types match expected schemas
+3. **Field Constraints**: Checks length, format, and content requirements
+4. **Schema Compliance**: Ensures metadata follows Croissant ML standards
+
+#### Remote Validation Configuration
+
+Biotope supports remote validation configurations to enforce institutional or cluster-wide policies. This allows administrators to maintain centralized validation requirements that are automatically applied to all projects.
+
+##### Architecture
 
 ```python
-def _validate_metadata_files(biotope_root: Path) -> bool:
-    """Validate all Croissant ML files in .biotope/datasets/."""
-    datasets_dir = biotope_root / ".biotope" / "datasets"
-    for dataset_file in datasets_dir.glob("*.jsonld"):
-        with open(dataset_file) as f:
-            metadata = json.load(f)
-            # Basic validation - check required fields
-            if not metadata.get("@type") == "Dataset":
-                click.echo(f"⚠️  Warning: {dataset_file.name} missing @type: Dataset")
+def load_biotope_config(biotope_root: Path) -> Dict:
+    """Load biotope configuration with remote validation support."""
+    config = load_local_config(biotope_root)
+    
+    # Check for remote validation configuration
+    remote_config = config.get("annotation_validation", {}).get("remote_config", {})
+    if remote_config and remote_config.get("url"):
+        remote_validation = _load_remote_validation_config(remote_config, biotope_root)
+        if remote_validation:
+            # Merge remote config with local config (local takes precedence)
+            merged_validation = _merge_validation_configs(remote_validation, validation_config)
+            config["annotation_validation"] = merged_validation
+    
+    return config
 ```
+
+##### Configuration Structure
+
+```yaml
+# .biotope/config/biotope.yaml
+annotation_validation:
+  enabled: true
+  remote_config:
+    url: "https://cluster.example.com/biotope-validation.yaml"
+    cache_duration: 3600  # seconds
+    fallback_to_local: true
+  # Local overrides (optional)
+  minimum_required_fields: ["name", "description", "creator"]
+```
+
+##### Remote Configuration Format
+
+```yaml
+# https://cluster.example.com/biotope-validation.yaml
+annotation_validation:
+  enabled: true
+  minimum_required_fields:
+    - name
+    - description
+    - creator
+    - dateCreated
+    - distribution
+    - license
+  field_validation:
+    name:
+      type: string
+      min_length: 1
+    description:
+      type: string
+      min_length: 10
+    creator:
+      type: object
+      required_keys: [name]
+    dateCreated:
+      type: string
+      format: date
+    distribution:
+      type: array
+      min_length: 1
+    license:
+      type: string
+      min_length: 5
+```
+
+##### Caching Strategy
+
+Remote configurations are cached locally to improve performance and enable offline operation:
+
+```python
+def _load_remote_validation_config(remote_config: Dict, biotope_root: Path) -> Optional[Dict]:
+    """Load validation configuration from a remote URL with caching."""
+    url = remote_config["url"]
+    cache_duration = remote_config.get("cache_duration", 3600)
+    
+    # Check cache first
+    cache_file = _get_cache_file_path(url, biotope_root)
+    if cache_file.exists():
+        cache_age = datetime.now() - datetime.fromtimestamp(cache_file.stat().st_mtime)
+        if cache_age.total_seconds() < cache_duration:
+            return load_cached_config(cache_file)
+    
+    # Fetch from remote and cache
+    remote_config_data = fetch_remote_config(url)
+    cache_remote_config(remote_config_data, cache_file)
+    return remote_config_data
+```
+
+##### Configuration Merging
+
+Local configurations can extend or override remote requirements:
+
+```python
+def _merge_validation_configs(remote_config: Dict, local_config: Dict) -> Dict:
+    """Merge remote and local validation configurations."""
+    merged = remote_config.copy()
+    
+    # Merge required fields (union)
+    remote_fields = set(remote_config.get("minimum_required_fields", []))
+    local_fields = set(local_config.get("minimum_required_fields", []))
+    merged["minimum_required_fields"] = list(remote_fields | local_fields)
+    
+    # Merge field validation (local overrides remote)
+    remote_validation = remote_config.get("field_validation", {})
+    local_validation = local_config.get("field_validation", {})
+    merged["field_validation"] = {**remote_validation, **local_validation}
+    
+    return merged
+```
+
+##### CLI Commands
+
+```bash
+# Set remote validation URL
+biotope config set-remote-validation --url https://cluster.example.com/validation.yaml
+
+# Show remote validation status
+biotope config show-remote-validation
+
+# Clear validation cache
+biotope config clear-validation-cache
+
+# Remove remote validation
+biotope config remove-remote-validation
+```
+
+##### Use Cases
+
+1. **Institutional Clusters**: Enforce consistent metadata standards across all research projects
+2. **Multi-site Collaborations**: Share validation requirements between institutions
+3. **Compliance Requirements**: Ensure datasets meet regulatory or funding requirements
+4. **Quality Assurance**: Maintain high metadata quality standards
+
+##### Implementation Notes
+
+- **Fallback Behavior**: Projects can fall back to local configuration if remote is unavailable
+- **Cache Management**: Automatic cache invalidation based on configurable duration
+- **Security**: HTTPS URLs recommended for production use
+- **Performance**: Caching reduces network overhead and improves reliability 
 
 ## Croissant ML Integration
 
@@ -387,25 +526,4 @@ The system supports:
 
 To add new validation rules:
 - Update the `field_validation` structure in the config (via CLI or manually).
-- Extend `_validate_field` in `biotope/validation.py` to support new rule types.
-- Add tests for new rules in `tests/commands/test_annotate.py` or a new test file.
-
-## Status Command Integration
-
-- The status command (`biotope/commands/status.py`) uses `get_annotation_status_for_files` to display annotation status for both staged and tracked metadata files.
-- The summary counts annotated/unannotated datasets for quick project health assessment.
-
-## Best Practices
-
-- Set clear, project-appropriate requirements for annotation fields.
-- Use the CLI (`biotope config set-validation`, etc) to manage requirements for reproducibility.
-- Encourage users to check `biotope status` regularly to ensure all datasets are properly annotated before committing.
-- For advanced validation (e.g., regex, cross-field checks), extend the validation module and document new rules for your team.
-
-## Code References
-- `biotope/validation.py`: Validation logic
-- `biotope/commands/status.py`: Status reporting
-- `biotope/commands/config.py`: Admin CLI for validation
-- `docs/git-integration.md`: User-facing documentation
-
-For questions or contributions, see the [CONTRIBUTING.md](../CONTRIBUTING.md). 
+- Extend `_validate_field` in `biotope/validation.py`

@@ -335,4 +335,86 @@ $ biotope config toggle-validation --enabled
 $ biotope config toggle-validation --disabled
 ```
 
+#### Remote Validation Configuration
+
+For institutional clusters or multi-site collaborations, you can use remote validation configurations to enforce consistent policies across all projects.
+
+##### Set Remote Validation URL
+
+```bash
+# Set a remote validation configuration
+$ biotope config set-remote-validation --url https://cluster.example.com/validation.yaml
+
+# With custom cache duration (in seconds)
+$ biotope config set-remote-validation --url https://cluster.example.com/validation.yaml --cache-duration 7200
+
+# Disable fallback to local config if remote fails
+$ biotope config set-remote-validation --url https://cluster.example.com/validation.yaml --no-fallback
+```
+
+##### Show Remote Validation Status
+
+```bash
+$ biotope config show-remote-validation
+```
+
+This shows:
+- Remote URL and configuration
+- Cache status and age
+- Effective configuration (remote + local merged)
+
+##### Clear Validation Cache
+
+```bash
+$ biotope config clear-validation-cache
+```
+
+##### Remove Remote Validation
+
+```bash
+$ biotope config remove-remote-validation
+```
+
+##### Example Remote Configuration
+
+```yaml
+# https://cluster.example.com/validation.yaml
+annotation_validation:
+  enabled: true
+  minimum_required_fields:
+    - name
+    - description
+    - creator
+    - dateCreated
+    - distribution
+    - license
+  field_validation:
+    name:
+      type: string
+      min_length: 1
+    description:
+      type: string
+      min_length: 10
+    creator:
+      type: object
+      required_keys: [name]
+    license:
+      type: string
+      min_length: 5
+```
+
+##### How Remote Validation Works
+
+1. **Caching**: Remote configurations are cached locally for performance
+2. **Merging**: Local configurations can extend or override remote requirements
+3. **Fallback**: If remote is unavailable, falls back to local configuration
+4. **Updates**: Cache is refreshed based on configurable duration
+
+##### Use Cases
+
+- **Institutional Clusters**: Enforce consistent metadata standards
+- **Multi-site Collaborations**: Share validation requirements
+- **Compliance**: Ensure datasets meet regulatory requirements
+- **Quality Assurance**: Maintain high metadata quality standards
+
 See also: [Admin documentation](git-integration-dev.md) for advanced configuration and developer details. 
