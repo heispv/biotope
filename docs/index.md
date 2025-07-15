@@ -22,7 +22,7 @@ are prototypes for new features. See more information in the API documentation.
 - `biotope chat`: Chat with a BioCypher project (BioChatter)
 - `biotope read`: Extract information from unstructured modalities (BioGather)
 - `biotope view`: Use visual analysis tools to interpret your data and metadata
-- `biotope get`: Download files and automatically start annotation
+- `biotope get`: Download files from a URL and stage them for annotation and version control
 - `biotope annotate`: Annotate your data with consistent metadata in Croissant ML
 
 ## Git Integration for Metadata Version Control
@@ -37,6 +37,7 @@ Biotope uses a **Git-on-Top** strategy for metadata version control, providing:
 ### Core Git-Integrated Commands
 
 - `biotope add`: Stage data files for metadata creation
+- `biotope get`: Download remote files and stage them for metadata creation
 - `biotope status`: Show current project status
 - `biotope commit`: Commit metadata changes using Git
 - `biotope log`: View commit history
@@ -49,10 +50,16 @@ Biotope uses a **Git-on-Top** strategy for metadata version control, providing:
 # Initialize project (with Git)
 biotope init
 
-# Add data files
+# Add local data files
 biotope add data/raw/experiment.csv
 
-# Create metadata
+# Or download and stage remote files
+biotope get https://example.com/data/experiment.csv
+
+# Check status
+biotope status
+
+# Create metadata for staged files
 biotope annotate interactive --staged
 
 # Or complete incomplete annotations
@@ -83,13 +90,16 @@ pip install biotope
 biotope annotate interactive
 ```
 
-You can also use the `biotope get` command to download files and automatically start the annotation process:
+You can also use the `biotope get` command to download files and stage them for annotation and version control:
 
 ```
 biotope get https://example.com/data/file.txt
+biotope status
+biotope annotate interactive --staged
+biotope commit -m "Add new dataset from URL"
 ```
 
-This will download the file and pre-fill metadata fields based on the file's properties.
+This will download the file, stage it for annotation, and fit into the same workflow as local files.
 
 After creation, `biotope` can also be used to validate the JSON-LD (CAVE: being
 a prototype, biotope does not yet implement all croissant fields):

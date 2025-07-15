@@ -26,6 +26,16 @@ This will:
 - Stage the metadata changes in Git
 - Show you what happened
 
+### Adding Remote Files
+
+If you want to add files from a URL, use `biotope get` instead:
+
+```bash
+biotope get https://example.com/data/experiment.csv
+```
+
+This downloads the file and stages it for metadata creation, just like `biotope add`. The workflow after downloading is the same: check status, annotate, and commit.
+
 ### Adding Multiple Files
 
 You can add several files at once:
@@ -279,30 +289,46 @@ biotope commit -m "Add RNA-seq dataset: 24 samples, 3 conditions, QC passed, rea
 ❌ Not in a Git repository. Initialize Git first with 'git init'.
 ```
 
-**Solution**: Either run `git init` or use `biotope init` which can set up Git for you.
+**Solution**: Initialize Git in your project directory:
+
+```bash
+git init
+git config user.name "Your Name"
+git config user.email "your.email@example.com"
+```
+
+### "File already tracked"
+
+```bash
+⚠️  File 'data/raw/experiment.csv' already tracked (use --force to override)
+```
+
+**Solution**: Use `--force` if you want to update the file's metadata:
+
+```bash
+biotope add data/raw/experiment.csv --force
+```
 
 ### "Path does not exist"
 
 ```bash
-Error: Invalid value for '[PATHS]...': Path 'data/raw/experiment.csv' does not exist.
+❌ Path 'data/raw/experiment.csv' does not exist.
 ```
 
-**Solution**: Check that the file path is correct and the file exists.
+**Solution**: Check the file path and make sure the file exists.
 
-### Permission Errors
+## Related Commands
 
-If you get permission errors, check:
-- File permissions
-- Directory permissions
-- Git repository permissions
+- **[Downloading Files](get-files.md)**: Learn how to download and stage files from URLs
+- **[Annotating Data](annotate-omics.md)**: Learn how to create detailed metadata for your data
+- **[Project Status](git-integration.md)**: Learn how to check your project status and manage metadata
 
-## Next Steps
+## Getting Help
 
-After adding files with `biotope add`:
+For additional help, use:
 
-1. **Create detailed metadata**: Use `biotope annotate interactive --staged`
-2. **Commit your changes**: Use `biotope commit -m "message"`
-3. **Share with others**: Use `biotope push` to share your metadata
-4. **Verify integrity**: Use `biotope check-data` to ensure data integrity
+```bash
+biotope add --help
+```
 
-The `add` command is just the first step in your biotope workflow. It prepares your files for the rich metadata management that biotope provides. 
+This will show all available options and usage examples. 
