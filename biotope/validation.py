@@ -37,8 +37,20 @@ def is_metadata_annotated(metadata: Dict, config: Dict) -> Tuple[bool, List[str]
     if not validation_config.get("enabled", True):
         return True, []
     
-    required_fields = validation_config.get("minimum_required_fields", [])
-    field_validation = validation_config.get("field_validation", {})
+    # Use default validation if no validation config is present
+    if not validation_config:
+        # Default validation requirements
+        required_fields = ["name", "description", "creator", "dateCreated", "distribution"]
+        field_validation = {
+            "name": {"type": "string", "min_length": 1},
+            "description": {"type": "string", "min_length": 10},
+            "creator": {"type": "object", "required_keys": ["name"]},
+            "dateCreated": {"type": "string", "format": "date"},
+            "distribution": {"type": "array", "min_length": 1}
+        }
+    else:
+        required_fields = validation_config.get("minimum_required_fields", [])
+        field_validation = validation_config.get("field_validation", {})
     
     errors = []
     
