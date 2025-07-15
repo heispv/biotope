@@ -276,21 +276,21 @@ A dataset is considered annotated if its metadata file (in `.biotope/datasets/`)
 ```
 $ biotope status
 
-[bold blue]Biotope Project Status[/]
+**Biotope Project Status**
 Project: my-biotope
 Location: /path/to/project
 Git Repository: ✅
 
-[bold green]Changes to be committed:[/]
+**Changes to be committed:**
 Status  File                              Annotated
 A       .biotope/datasets/mydata.jsonld   ✅
 
-[bold blue]Tracked Datasets:[/]
+**Tracked Datasets:**
 Dataset         Annotated   Status
 mydata          ✅          Complete
 rawdata         ⚠️          Incomplete (2 issues)
 
-[bold]Summary:[/]
+**Summary:**
   Staged: 1 file(s) (1 annotated, 0 unannotated)
   Tracked datasets: 2 (1 annotated, 1 unannotated)
 ```
@@ -304,10 +304,10 @@ Admins can configure what fields are required and how they are validated using t
 ```
 $ biotope config show-validation
 
-[bold blue]Annotation Validation Configuration[/]
+**Annotation Validation Configuration**
 Enabled: ✅
 
-[bold green]Required Fields:[/]
+**Required Fields:**
 Field        Type      Validation Rules
 name         string    min_length: 1
 description  string    min_length: 10

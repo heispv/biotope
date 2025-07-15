@@ -96,16 +96,25 @@ Project: /cluster/projects/user1/experiment
   Status: cluster_compliant
   Remote validation: https://cluster.example.com/validation/cluster-strict
   Required fields: name, description, creator, dateCreated, distribution, license, project_id
-  ✅ COMPLIANT
+  **✅ COMPLIANT**
 
 Project: /cluster/projects/user2/data
   Pattern: default
   Status: default_pattern
   Required fields: name, description, creator, dateCreated, distribution
-  ❌ NON-COMPLIANT
+  **❌ NON-COMPLIANT**
     - Wrong validation pattern: default (required: cluster-strict)
     - Missing required fields: license, project_id
     - Remote validation not configured
+
+================================================================================
+RECOMMENDATIONS:
+- 5 projects are using default validation pattern
+  Consider configuring cluster-specific validation for these projects
+- 2 projects have configuration errors
+  Review these projects and fix configuration issues
+- 7 projects are non-compliant
+  Contact project owners to update validation configuration
 ```
 
 ---
