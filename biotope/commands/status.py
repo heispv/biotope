@@ -150,14 +150,27 @@ def _show_rich_status(biotope_root: Path, console: Console, biotope_only: bool) 
     console.print(f"  Untracked: {total_untracked} file(s)")
     console.print(f"  Tracked datasets: {len(tracked_metadata_files)} ({tracked_annotated} annotated, {tracked_unannotated} unannotated)")
     
+    # Check if there are staged metadata files that need annotation
+    has_incomplete_annotations = any(not is_annotated for is_annotated, _ in staged_annotation_status.values())
+    
+    # Check if there are tracked metadata files that need annotation
+    has_incomplete_tracked = any(not is_annotated for is_annotated, _ in tracked_annotation_status.values())
+    
     if total_staged > 0:
         console.print(f"\n💡 Next steps:")
+        if has_incomplete_annotations:
+            console.print(f"  • Run 'biotope annotate interactive --staged' to complete metadata annotations")
         console.print(f"  • Run 'biotope commit -m \"message\"' to commit changes")
     elif total_modified > 0 or total_untracked > 0:
         console.print(f"\n💡 Next steps:")
         console.print(f"  • Run 'biotope add <data_file>' to add data files")
         console.print(f"  • Run 'biotope annotate interactive --staged' to create metadata")
         console.print(f"  • Run 'biotope commit -m \"message\"' to commit changes")
+    
+    # Show suggestion for incomplete tracked files if no other actions are needed
+    if has_incomplete_tracked and total_staged == 0 and total_modified == 0 and total_untracked == 0:
+        console.print(f"\n💡 Next steps:")
+        console.print(f"  • Run 'biotope annotate interactive --incomplete' to complete metadata annotations")
 
 
 def _show_porcelain_status(biotope_root: Path, biotope_only: bool) -> None:
