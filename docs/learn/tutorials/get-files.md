@@ -1,10 +1,6 @@
-# Downloading and Annotating Files with `get`
+# Downloading and Staging Files with `get`
 
-The `get` command in Biotope provides a convenient way to download files and
-automatically start the annotation process. It combines file downloading
-capabilities with Biotope's powerful annotation system. Check also the
-[annotation tutorial](annotate-omics.md) for more information on how to annotate
-your data.
+The `get` command in Biotope provides a convenient way to download files from a URL and immediately stage them for metadata creation and version control. It integrates seamlessly with Biotope's git-on-top workflow. See also the [annotation tutorial](annotate-omics.md) for more information on annotating your data.
 
 ## Basic Usage
 
@@ -21,15 +17,15 @@ biotope get https://raw.githubusercontent.com/biocypher/biotope/refs/heads/main/
 ```
 
 This will:
-1. Download the file to the `downloads` directory
-2. Calculate its MD5 hash
-3. Detect the file type
-4. Create pre-filled metadata
-5. Automatically start the interactive annotation process
+1. Download the file to the `data/raw` directory (or a custom location)
+2. Add the file to your biotope project and stage it for metadata creation (using the same mechanism as `biotope add`)
+3. Show you the next steps: annotate and commit
+
+**Note:** The annotation process is now a separate, explicit step. After downloading, you should run `biotope annotate --staged` to create or complete the metadata, and then commit your changes.
 
 ## Command Options
 
-The `get` command supports the following option:
+The `get` command supports the following options:
 
 ```bash
 biotope get [OPTIONS] URL
@@ -37,25 +33,125 @@ biotope get [OPTIONS] URL
 
 ### Available Options
 
-- `--output-dir`, `-o`: Specify a custom directory for downloaded files
+- `--output-dir`, `-o`: Specify a custom directory for downloaded files (default: `data/raw`)
   ```bash
   biotope get https://example.com/data/file.txt --output-dir /path/to/dir
   ```
+- `--no-add`: Download the file without adding it to the biotope project (advanced use)
 
-## Automatic Metadata Generation
+## Download Locations
 
-When downloading a file, the `get` command automatically generates initial
-metadata in Croissant ML format. This includes:
+### Default Location
 
-- File identification (name, path, MD5 hash)
+By default, files are downloaded to a `data/raw` directory in your current working directory:
+
+```
+your-project/
+├── data/
+│   ├── raw/           # Default download location
+│   │   ├── file1.csv
+│   │   └── file2.fasta
+│   └── processed/
+├── .biotope/
+└── .git/
+```
+
+This aligns with the recommended project structure and makes it easy to organize your data files.
+
+### Custom Location
+
+You can specify a custom download location using the `--output-dir` option:
+
+```bash
+# Download to a specific directory
+biotope get https://example.com/data/file.csv --output-dir ./data/processed
+
+# Download to an absolute path
+biotope get https://example.com/data/file.csv --output-dir /Users/username/project/data
+```
+
+### Recommended Organization
+
+For better project organization, consider downloading files to appropriate subdirectories:
+
+```bash
+# Download to raw data directory (default)
+biotope get https://example.com/data/experiment.csv
+
+# Download to processed data directory
+biotope get https://example.com/data/results.csv --output-dir ./data/processed
+
+# Download to specific experiment directory
+biotope get https://example.com/data/experiment.csv --output-dir ./data/raw/experiment_2024_01
+```
+
+## File Tracking and Moves
+
+Biotope tracks files by their relative path from the project root. This means:
+
+### How File Tracking Works
+
+- Files are tracked using their relative path (e.g., `data/raw/experiment.csv`)
+- The metadata stores this relative path in the `contentUrl` field
+- Biotope can find files regardless of where you run commands from within the project
+
+### Moving Files After Download
+
+If you download a file and later want to reorganize your project structure:
+
+1. **Move the file manually:**
+   ```bash
+   # Download to default location
+   biotope get https://example.com/data/experiment.csv
+   
+   # Later, move to a better location
+   mkdir -p data/raw/experiment_2024_01
+   mv data/raw/experiment.csv data/raw/experiment_2024_01/
+   ```
+
+2. **Update the metadata:**
+   ```bash
+   # Check what's broken
+   biotope check-data
+   
+   # Re-add the file in its new location
+   biotope add data/raw/experiment_2024_01/experiment.csv --force
+   ```
+
+3. **Commit the changes:**
+   ```bash
+   biotope commit -m "Reorganize experiment data into subdirectory"
+   ```
+
+### Checking File Integrity
+
+Use `biotope check-data` to verify that all tracked files are still accessible:
+
+```bash
+# Check all files
+biotope check-data
+
+# Check specific file
+biotope check-data -f data/raw/experiment.csv
+```
+
+This will report:
+- **Valid**: File exists and checksum matches
+- **Missing**: File not found at recorded location
+- **Corrupted**: File exists but checksum doesn't match
+- **Untracked**: File not tracked in biotope
+
+## Automatic Metadata Generation and Staging
+
+When downloading a file, the `get` command automatically generates initial metadata in Croissant ML format and stages it in git. This includes:
+
+- File identification (name, path, SHA256 hash)
 - File type detection
 - Source URL
 - Creator information
 - Creation date
-- Basic record set structure
 
-The generated metadata follows the schema.org and Croissant ML standards, making
-it compatible with the rest of the Biotope ecosystem.
+The generated metadata follows the schema.org and Croissant ML standards, making it compatible with the rest of the Biotope ecosystem. Metadata is created in `.biotope/datasets/` and staged for commit.
 
 ### Example Generated Metadata
 
@@ -72,65 +168,70 @@ it compatible with the rest of the Biotope ecosystem.
     "distribution": [
         {
             "@type": "sc:FileObject",
-            "@id": "file_md5hash",
+            "@id": "file_sha256hash",
             "name": "file.txt",
-            "contentUrl": "https://example.com/data/file.txt",
+            "contentUrl": "data/raw/file.txt",
             "encodingFormat": "text/plain",
-            "sha256": "md5hash"
+            "sha256": "sha256hash"
         }
     ]
 }
 ```
 
-## Interactive Annotation
+## Next Steps: Annotate and Commit
 
-After downloading, the command automatically starts the interactive annotation
-process. You can:
+After downloading and staging the file, continue with the standard git-on-top workflow:
 
-1. Review and modify the pre-filled metadata
-2. Add additional fields and record sets
-3. Specify access restrictions and legal obligations
-4. Add collaboration information
+1. **Check status:**
+   ```bash
+   biotope status
+   ```
+   This shows the staged file and its metadata status.
 
-The interactive process follows the same workflow as the `annotate` command, but
-with pre-filled information to save time.
+2. **Annotate the file:**
+   ```bash
+   biotope annotate interactive --staged
+   ```
+   This opens an interactive session to complete the metadata.
 
-## Error Handling
-
-The command handles various error cases gracefully:
-
-- Download failures: Displays an error message and exits
-- Annotation failures: Shows the error and allows you to retry
-- Invalid URLs: Provides clear error messages
-- File system issues: Handles permission problems and disk space issues
-
-## Best Practices
-
-1. **Use Meaningful URLs**: When possible, use URLs that reflect the content or purpose of the file
-2. **Organize Downloads**: Use the `--output-dir` option to keep downloaded files organized
-3. **Review Metadata**: Always review the pre-filled metadata before saving
+3. **Commit your changes:**
+   ```bash
+   biotope commit -m "Add new dataset from URL"
+   ```
 
 ## Examples
 
-### Download and Annotate a CSV File
+### Download and Stage a CSV File
 
 ```bash
 biotope get https://example.com/data/expression.csv
+biotope status
+biotope annotate interactive --staged
+biotope commit -m "Add expression dataset"
 ```
 
 ### Download to a Specific Directory
 
 ```bash
-biotope get https://example.com/data/expression.csv --output-dir ./data/raw
+biotope get https://example.com/data/expression.csv --output-dir ./data/processed
+```
+
+### Download Without Adding to Project
+
+```bash
+biotope get https://example.com/data/expression.csv --no-add
+# Later, manually add the file
+biotope add data/raw/expression.csv
 ```
 
 ## Integration with Other Commands
 
-The `get` command integrates well with other Biotope commands:
+The `get` command integrates with the full git-on-top workflow:
 
-- Use `biotope annotate validate` to validate the generated metadata
-- Use `biotope read` to read the downloaded and annotated files
-- Use `biotope chat` to ask questions about the downloaded data
+- Use `biotope status` to see staged files and their annotation status
+- Use `biotope annotate interactive --staged` to annotate all newly downloaded files
+- Use `biotope commit` to save your changes
+- Use `biotope check-data` to verify data integrity
 
 ## Troubleshooting
 
@@ -141,15 +242,24 @@ The `get` command integrates well with other Biotope commands:
    - Verify the URL is accessible
    - Ensure you have write permissions in the output directory
 
-2. **Annotation Fails**
+2. **Metadata Not Created**
+   - Make sure you are in a biotope project and a git repository
+   - Check for error messages in the output
+
+3. **Annotation Fails**
    - Check if the file is corrupted
    - Verify you have sufficient disk space
    - Ensure you have the required permissions
 
-3. **Metadata Issues**
+4. **Metadata Issues**
    - Use `biotope annotate validate` to check metadata validity
    - Review the pre-filled metadata carefully
    - Make sure all required fields are filled
+
+5. **File Not Found After Move**
+   - Use `biotope check-data` to identify missing files
+   - Re-add files in their new locations with `biotope add --force`
+   - Commit the changes to update metadata
 
 ### Getting Help
 

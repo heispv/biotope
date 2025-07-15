@@ -5,51 +5,70 @@ work with Biotope for metadata annotation.
 
 ## Workflow Overview
 
-The following diagram illustrates the main annotation workflow in Biotope:
+Biotope supports multiple workflows for managing your data and metadata:
+
+### Git-Integrated Workflow (Recommended)
 
 ```mermaid
 graph LR
-    subgraph "biotope get workflow"
+    subgraph "biotope add/get workflow"
         direction TB
-        A[Start] --> B[Download File]
-        B --> C[Calculate MD5 Hash]
-        C --> D[Create Pre-filled Metadata]
-        D --> E[Trigger Interactive Annotation]
+        A[Start] --> B[Add or Download Files]
+        B --> C[Calculate SHA256 Hash]
+        C --> D[Create Basic Metadata]
+        D --> E[Stage in Git]
         
-        subgraph "Interactive Annotation"
+        subgraph "Enhanced Metadata"
             direction TB
-            E --> F[Step-by-step Guide]
+            E --> F[Interactive Annotation]
             F --> G[Complete Metadata]
         end
         
-        G --> H[Save Metadata]
-        H --> I[Validate Metadata]
-        
-        subgraph "Validation"
-            direction TB
-            I --> J[Check Schema]
-            J --> K[Report Issues]
-        end
+        G --> H[Commit Changes]
+        H --> I[Share with Team]
     end
 ```
 
-## Workflow Description
+### Workflow Description
 
-The `biotope get` command provides a streamlined way to download files and annotate them with metadata:
+The `biotope add` and `biotope get` commands are the foundation of Git-integrated metadata management:
 
-1. **Download File**: Downloads the specified file from a URL
-2. **Calculate MD5 Hash**: Generates a unique identifier for the file
-3. **Create Pre-filled Metadata**: Automatically generates initial metadata based on the file
-4. **Interactive Annotation**: Guides you through completing the metadata with a step-by-step process
-5. **Save Metadata**: Stores the final metadata alongside your file
-6. **Validation**: Checks the metadata against the schema and reports any issues
+1. **Add or Download Files**: Add local files with `biotope add` or download remote files with `biotope get`
+2. **Calculate SHA256 Hash**: Generate checksums for data integrity
+3. **Create Basic Metadata**: Automatically generate initial Croissant ML metadata
+4. **Stage in Git**: Prepare metadata changes for version control
+5. **Enhanced Metadata**: Use `biotope annotate` to add detailed metadata
+6. **Commit Changes**: Save metadata changes with Git
+7. **Share with Team**: Use standard Git workflows for collaboration
 
 ## Getting Started
 
-To get started with Biotope, use `biotope get <url>` to download and annotate a
-file in one step. This will guide you through the entire process from download
-to validation.
+### For Local Files (Recommended)
 
-For more detailed information about the command and its options, please refer
-to the specific tutorial pages for [biotope get](get-files.md) and
-[biotope annotate](annotate-omics.md).
+To get started with local files, use the Git-integrated workflow:
+
+```bash
+biotope init
+biotope add data/raw/experiment.csv
+biotope annotate interactive --staged
+biotope commit -m "Add experiment dataset"
+```
+
+### For Downloaded Files
+
+To get started with downloaded files, use the download workflow:
+
+```bash
+biotope get https://example.com/data/file.csv
+biotope status
+biotope annotate interactive --staged
+biotope commit -m "Add downloaded dataset"
+```
+
+## Tutorials
+
+For detailed information about each workflow, please refer to the specific tutorial pages:
+
+- **[Adding Files](add-files.md)**: Learn how to add local files to your biotope project
+- **[Downloading Files](get-files.md)**: Learn how to download and annotate files from URLs
+- **[Annotating Data](annotate-omics.md)**: Learn how to create detailed metadata for your data

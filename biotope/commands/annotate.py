@@ -7,6 +7,7 @@ import getpass
 import json
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 import click
 from rich.console import Console
@@ -14,6 +15,8 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
+
+from biotope.utils import find_biotope_root
 
 
 def get_standard_context() -> dict:
@@ -220,6 +223,20 @@ def create(
     with open(output, "w") as f:
         json.dump(metadata, f, indent=2)
 
+    # Stage the changes in Git if we're in a biotope project
+    try:
+        biotope_root = find_biotope_root()
+        if biotope_root:
+            import subprocess
+            subprocess.run(
+                ["git", "add", ".biotope/"],
+                cwd=biotope_root,
+                check=True
+            )
+            click.echo(f"✅ Staged changes in Git")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass  # Not in a biotope project or Git not available
+
     click.echo(f"Created Croissant metadata file at {output}")
 
 
@@ -331,7 +348,19 @@ def load(jsonld, record_set, num_records):
     type=str,
     help="JSON string containing pre-filled metadata",
 )
-def interactive(file_path: str | None = None, prefill_metadata: str | None = None) -> None:
+@click.option(
+    "--staged",
+    "-s",
+    is_flag=True,
+    help="Annotate all staged files",
+)
+@click.option(
+    "--incomplete",
+    "-i",
+    is_flag=True,
+    help="Annotate all tracked files with incomplete metadata",
+)
+def interactive(file_path: str | None = None, prefill_metadata: str | None = None, staged: bool = False, incomplete: bool = False) -> None:
     """Interactive annotation process for files."""
     console = Console()
 
@@ -340,6 +369,95 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
     # Merge with standard context and structure
     metadata = merge_metadata(dynamic_metadata)
+
+    # Handle staged files
+    if staged:
+        biotope_root = find_biotope_root()
+        if not biotope_root:
+            click.echo("❌ Not in a biotope project. Run 'biotope init' first.")
+            raise click.Abort
+        
+        staged_files = get_staged_files(biotope_root)
+        if not staged_files:
+            click.echo("❌ No files staged. Use 'biotope add <file>' first.")
+            raise click.Abort
+        
+        console.print(f"[bold blue]Annotating {len(staged_files)} staged file(s)[/]")
+        
+        for i, file_info in enumerate(staged_files):
+            file_path = biotope_root / file_info["file_path"]
+            console.print(f"\n[bold green]File {i+1}/{len(staged_files)}: {file_path.name}[/]")
+            
+            # Pre-fill with file information
+            file_metadata = {
+                "name": file_path.stem,
+                "description": f"Dataset for {file_path.name}",
+                "distribution": [
+                    {
+                        "@type": "sc:FileObject",
+                        "@id": f"file_{file_info['sha256'][:8]}",
+                        "name": file_path.name,
+                        "contentUrl": str(file_path.relative_to(biotope_root)),
+                        "sha256": file_info["sha256"],
+                        "contentSize": file_info["size"]
+                    }
+                ]
+            }
+            
+            # Run interactive annotation for this file
+            _run_interactive_annotation(console, file_path, file_metadata, biotope_root)
+        
+        return
+
+    # Handle incomplete files
+    if incomplete:
+        biotope_root = find_biotope_root()
+        if not biotope_root:
+            click.echo("❌ Not in a biotope project. Run 'biotope init' first.")
+            raise click.Abort
+        
+        # Get all tracked files and check their annotation status
+        from biotope.validation import get_all_tracked_files, get_annotation_status_for_files
+        
+        tracked_files = get_all_tracked_files(biotope_root)
+        if not tracked_files:
+            click.echo("❌ No tracked files found. Use 'biotope add <file>' first.")
+            raise click.Abort
+        
+        annotation_status = get_annotation_status_for_files(biotope_root, tracked_files)
+        incomplete_files = [
+            file_path for file_path, (is_annotated, _) in annotation_status.items() 
+            if not is_annotated
+        ]
+        
+        if not incomplete_files:
+            click.echo("✅ All tracked files are properly annotated!")
+            return
+        
+        console.print(f"[bold blue]Found {len(incomplete_files)} file(s) with incomplete annotation[/]")
+        
+        for i, file_path in enumerate(incomplete_files):
+            metadata_file = biotope_root / file_path
+            console.print(f"\n[bold green]File {i+1}/{len(incomplete_files)}: {metadata_file.stem}[/]")
+            
+            # Load existing metadata to pre-fill
+            try:
+                with open(metadata_file) as f:
+                    existing_metadata = json.load(f)
+            except (json.JSONDecodeError, IOError):
+                existing_metadata = {}
+            
+            # Extract file information from existing metadata
+            file_info = {
+                "name": existing_metadata.get("name", metadata_file.stem),
+                "description": existing_metadata.get("description", f"Dataset for {metadata_file.stem}"),
+                "distribution": existing_metadata.get("distribution", [])
+            }
+            
+            # Run interactive annotation for this file (updating existing)
+            _run_interactive_annotation(console, metadata_file, file_info, biotope_root, update_existing=True)
+        
+        return
 
     # If file path is provided, use it
     if file_path:
@@ -436,11 +554,17 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
     console.print("─" * 50)
     console.print("[italic]The following fields are optional but recommended for scientific datasets[/]")
 
+    # Get default format from distribution if available
+    default_format = ""
+    distribution = metadata.get("distribution", [])
+    if distribution and len(distribution) > 0:
+        default_format = distribution[0].get("encodingFormat", "")
+    
     format = click.prompt(
         "File format (MIME type, e.g., text/csv, application/json, application/x-hdf5, application/fastq)",
         default=metadata.get("encodingFormat")
         or metadata.get("format")
-        or (metadata.get("distribution", [{}])[0].get("encodingFormat", "")),
+        or default_format,
     )
 
     legal_obligations = click.prompt(
@@ -770,6 +894,20 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
     with open(output_path, "w") as f:
         json.dump(metadata, f, indent=2)
 
+    # Stage the changes in Git if we're in a biotope project
+    try:
+        biotope_root = find_biotope_root()
+        if biotope_root:
+            import subprocess
+            subprocess.run(
+                ["git", "add", ".biotope/"],
+                cwd=biotope_root,
+                check=True
+            )
+            console.print(f"✅ Staged changes in Git")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass  # Not in a biotope project or Git not available
+
     # Final success message with rich formatting
     console.print()
     console.print(
@@ -782,3 +920,265 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
 
     console.print("[italic]Validate this file with:[/]")
     console.print(f"[bold yellow]biotope annotate validate --jsonld {output_path}[/]")
+
+
+def _run_interactive_annotation(console: Console, file_path: Path, prefill_metadata: dict, biotope_root: Path, update_existing: bool = False) -> None:
+    """Run interactive annotation for a specific file."""
+    # Start with pre-filled metadata
+    metadata = merge_metadata(prefill_metadata)
+    
+    # Create a nice header for this file
+    console.print(
+        Panel(
+            f"[bold blue]Annotating: {file_path.name}[/]",
+            subtitle="Interactive metadata creation",
+        ),
+    )
+    
+    console.print(Markdown("This wizard will help you document your scientific dataset with standardized metadata."))
+    console.print()
+    
+    # Section: Basic Information
+    console.print("[bold green]Basic Dataset Information[/]")
+    console.print("─" * 50)
+    
+    # Use pre-filled name if available, otherwise prompt
+    dataset_name = metadata.get("name", "")
+    if not dataset_name:
+        dataset_name = click.prompt(
+            "Dataset name (a short, descriptive title; no spaces allowed)",
+            default="",
+        )
+    else:
+        dataset_name = click.prompt(
+            "Dataset name (a short, descriptive title; no spaces allowed)",
+            default=dataset_name,
+        )
+    
+    description = click.prompt(
+        "Dataset description (what does this dataset contain and what is it used for?)",
+        default=metadata.get("description", ""),
+    )
+    
+    # Section: Source Information
+    console.print("\n[bold green]Data Source Information[/]")
+    console.print("─" * 50)
+    console.print("Where did this data come from? (e.g., a URL, database name, or experiment)")
+    data_source = click.prompt("Data source", default=metadata.get("url", ""))
+    
+    # Section: Ownership and Dates
+    console.print("\n[bold green]Ownership and Dates[/]")
+    console.print("─" * 50)
+    
+    project_name = click.prompt(
+        "Project name",
+        default=metadata.get("cr:projectName", Path.cwd().name),
+    )
+    
+    contact = click.prompt(
+        "Contact person (email preferred)",
+        default=metadata.get("creator", {}).get("name", getpass.getuser()),
+    )
+    
+    date = click.prompt(
+        "Creation date (YYYY-MM-DD)",
+        default=metadata.get("dateCreated", datetime.date.today().isoformat()),
+    )
+    
+    # Section: Access Information
+    console.print("\n[bold green]Access Information[/]")
+    console.print("─" * 50)
+    
+    # Create a table for examples
+    table = Table(title="Access Restriction Examples")
+    table.add_column("Type", style="cyan")
+    table.add_column("Description", style="green")
+    table.add_row("Public", "Anyone can access and use the data")
+    table.add_row("Academic", "Restricted to academic/research use only")
+    table.add_row("Approval", "Requires explicit approval from data owner")
+    table.add_row("Embargo", "Will become public after a specific date")
+    console.print(table)
+    
+    has_access_restrictions = Confirm.ask(
+        "Does this dataset have access restrictions?",
+        default=bool(metadata.get("cr:accessRestrictions")),
+    )
+    
+    access_restrictions = None
+    if has_access_restrictions:
+        access_restrictions = Prompt.ask(
+            "Please describe the access restrictions",
+            default=metadata.get("cr:accessRestrictions", ""),
+        )
+        if not access_restrictions.strip():
+            access_restrictions = None
+    
+    # Section: Additional Information
+    console.print("\n[bold green]Additional Information[/]")
+    console.print("─" * 50)
+    console.print("[italic]The following fields are optional but recommended for scientific datasets[/]")
+    
+    # Get default format from distribution if available
+    default_format = ""
+    distribution = metadata.get("distribution", [])
+    if distribution and len(distribution) > 0:
+        default_format = distribution[0].get("encodingFormat", "")
+    
+    format = click.prompt(
+        "File format (MIME type, e.g., text/csv, application/json, application/x-hdf5, application/fastq)",
+        default=metadata.get("encodingFormat")
+        or metadata.get("format")
+        or default_format,
+    )
+    
+    legal_obligations = click.prompt(
+        "Legal obligations (e.g., citation requirements, licenses)",
+        default=metadata.get("cr:legalObligations", ""),
+    )
+    
+    collaboration_partner = click.prompt(
+        "Collaboration partner and institute",
+        default=metadata.get("cr:collaborationPartner", ""),
+    )
+    
+    # Section: Publication Information
+    console.print("\n[bold green]Publication Information[/]")
+    console.print("─" * 50)
+    console.print("[italic]The following fields are recommended for proper dataset citation[/]")
+    
+    publication_date = click.prompt(
+        "Publication date (YYYY-MM-DD)",
+        default=metadata.get("datePublished", date),  # Use creation date as default
+    )
+    
+    version = click.prompt(
+        "Dataset version",
+        default=metadata.get("version", "1.0"),
+    )
+    
+    license_url = click.prompt(
+        "License URL",
+        default=metadata.get("license", "https://creativecommons.org/licenses/by/4.0/"),
+    )
+    
+    citation = click.prompt(
+        "Citation text",
+        default=metadata.get("citation", f"Please cite this dataset as: {dataset_name} ({date.split('-')[0]})"),
+    )
+    
+    # Update metadata with new values while preserving any existing fields
+    new_metadata = {
+        "@context": get_standard_context(),  # Use the standard context
+        "@type": "Dataset",
+        "name": dataset_name,
+        "description": description,
+        "url": data_source,
+        "creator": {
+            "@type": "Person",
+            "name": contact,
+        },
+        "dateCreated": date,
+        "cr:projectName": project_name,
+        "datePublished": publication_date,
+        "version": version,
+        "license": license_url,
+        "citation": citation,
+    }
+    
+    # Only add access restrictions if they exist
+    if access_restrictions:
+        new_metadata["cr:accessRestrictions"] = access_restrictions
+    
+    # Add optional fields if provided
+    if format:
+        new_metadata["encodingFormat"] = format
+    if legal_obligations:
+        new_metadata["cr:legalObligations"] = legal_obligations
+    if collaboration_partner:
+        new_metadata["cr:collaborationPartner"] = collaboration_partner
+    
+    # Update metadata while preserving pre-filled values (especially distribution)
+    for key, value in new_metadata.items():
+        if key not in ["distribution"]:  # Don't overwrite distribution
+            metadata[key] = value
+    
+    # Initialize distribution array for FileObjects/FileSets if it doesn't exist
+    if "distribution" not in metadata:
+        metadata["distribution"] = []
+    
+    # Update the distribution with the new format if provided
+    if format and metadata["distribution"]:
+        for distribution in metadata["distribution"]:
+            if distribution.get("@type") == "sc:FileObject":
+                distribution["encodingFormat"] = format
+    
+    # Save to datasets directory
+    datasets_dir = biotope_root / ".biotope" / "datasets"
+    datasets_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Determine output path
+    if update_existing:
+        # Keep the existing filename when updating
+        output_path = file_path
+    else:
+        # Use the dataset name for the filename, not the original file name
+        output_path = datasets_dir / f"{dataset_name}.jsonld"
+    
+    with open(output_path, "w") as f:
+        json.dump(metadata, f, indent=2)
+    
+    # Stage the changes in Git
+    try:
+        import subprocess
+        subprocess.run(
+            ["git", "add", ".biotope/"],
+            cwd=biotope_root,
+            check=True
+        )
+        console.print(f"✅ Created metadata: {output_path}")
+        console.print(f"✅ Staged changes in Git")
+    except subprocess.CalledProcessError as e:
+        console.print(f"✅ Created metadata: {output_path}")
+        console.print(f"⚠️  Warning: Could not stage changes in Git: {e}")
+
+
+def get_staged_files(biotope_root: Path) -> list:
+    """Get list of staged files from Git."""
+    import json
+    import subprocess
+    staged_files = []
+    
+    try:
+        # Get staged files from Git
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=biotope_root,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        for file_path in result.stdout.splitlines():
+            if file_path.startswith(".biotope/datasets/") and file_path.endswith(".jsonld"):
+                # Read the metadata file to get file information
+                metadata_file = biotope_root / file_path
+                try:
+                    with open(metadata_file) as f:
+                        metadata = json.load(f)
+                        for distribution in metadata.get("distribution", []):
+                            if distribution.get("@type") == "sc:FileObject":
+                                staged_files.append({
+                                    "file_path": distribution.get("contentUrl"),
+                                    "sha256": distribution.get("sha256"),
+                                    "size": distribution.get("contentSize")
+                                })
+                except (json.JSONDecodeError, KeyError):
+                    continue
+                    
+    except subprocess.CalledProcessError:
+        pass
+    
+    return staged_files
+
+
+

@@ -1,13 +1,22 @@
 """Tests for the get command."""
 
 import hashlib
+import json
+import subprocess
+from pathlib import Path
 from unittest import mock
 
 import pytest
 import requests
 from click.testing import CliRunner
 
-from biotope.commands.get import calculate_md5, detect_file_type, download_file, get_file_and_annotate
+from biotope.commands.get import (
+    calculate_sha256,
+    detect_file_type,
+    download_file,
+    _call_biotope_add,
+)
+from biotope.utils import is_git_repo, find_biotope_root
 
 
 @pytest.fixture
@@ -35,10 +44,34 @@ def mock_response():
     return mock_resp
 
 
-def test_calculate_md5(sample_file):
-    """Test MD5 hash calculation."""
-    expected_hash = hashlib.md5(sample_file.read_bytes()).hexdigest()
-    assert calculate_md5(sample_file) == expected_hash
+@pytest.fixture
+def biotope_project(tmp_path):
+    """Create a temporary biotope project for testing."""
+    project_dir = tmp_path / "test_project"
+    project_dir.mkdir()
+    
+    # Create .biotope directory structure
+    biotope_dir = project_dir / ".biotope"
+    biotope_dir.mkdir()
+    (biotope_dir / "datasets").mkdir()
+    (biotope_dir / "config").mkdir()
+    
+    # Create basic config
+    config_file = biotope_dir / "config" / "biotope.yaml"
+    config_file.write_text("project_name: test_project\n")
+    
+    # Initialize git repository
+    subprocess.run(["git", "init"], cwd=project_dir, check=True)
+    subprocess.run(["git", "config", "user.name", "Test User"], cwd=project_dir, check=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=project_dir, check=True)
+    
+    return project_dir
+
+
+def test_calculate_sha256(sample_file):
+    """Test SHA256 hash calculation."""
+    expected_hash = hashlib.sha256(sample_file.read_bytes()).hexdigest()
+    assert calculate_sha256(sample_file) == expected_hash
 
 
 def test_detect_file_type(sample_file):
@@ -66,7 +99,28 @@ def test_download_file_success(mock_get, tmp_path, mock_response):
     assert result.name == "test.txt"
     assert result.parent == output_dir
 
-    mock_get.assert_called_once_with(url, stream=True, timeout=10)
+    mock_get.assert_called_once_with(url, stream=True, timeout=30)
+
+
+@mock.patch("requests.get")
+def test_download_file_with_content_disposition(mock_get, tmp_path):
+    """Test file download with Content-Disposition header."""
+    mock_resp = mock.Mock()
+    mock_resp.headers = {
+        "content-length": "100",
+        "Content-Disposition": 'attachment; filename="custom_name.csv"'
+    }
+    mock_resp.iter_content.return_value = [b"test content"]
+    mock_resp.raise_for_status.return_value = None
+    mock_get.return_value = mock_resp
+    
+    url = "https://example.com/test.txt"
+    output_dir = tmp_path / "downloads"
+    output_dir.mkdir()
+
+    result = download_file(url, output_dir)
+    assert result is not None
+    assert result.name == "custom_name.csv"
 
 
 @mock.patch("requests.get")
@@ -81,200 +135,199 @@ def test_download_file_failure(mock_get, tmp_path):
     assert result is None
 
 
-@mock.patch("biotope.commands.get.requests.get")
-def test_get_command_download_failure(mock_get, runner):
+def test_find_biotope_root(biotope_project):
+    """Test finding biotope project root."""
+    # Test from project root
+    with mock.patch("pathlib.Path.cwd", return_value=biotope_project):
+        result = find_biotope_root()
+        assert result == biotope_project
+    
+    # Test from subdirectory
+    subdir = biotope_project / "subdir"
+    subdir.mkdir()
+    
+    with mock.patch("pathlib.Path.cwd", return_value=subdir):
+        result = find_biotope_root()
+        assert result == biotope_project
+
+
+def test_find_biotope_root_not_found(tmp_path):
+    """Test finding biotope project root when not in a project."""
+    with mock.patch("pathlib.Path.cwd", return_value=tmp_path):
+        result = find_biotope_root()
+        assert result is None
+
+
+def test_is_git_repo(biotope_project):
+    """Test Git repository detection."""
+    assert is_git_repo(biotope_project) is True
+
+
+def test_is_git_repo_not_git(tmp_path):
+    """Test Git repository detection when not a Git repo."""
+    assert is_git_repo(tmp_path) is False
+
+
+@mock.patch("biotope.commands.add._add_file")
+@mock.patch("biotope.commands.add._stage_git_changes")
+def test_call_biotope_add_success(mock_stage, mock_add, biotope_project, sample_file):
+    """Test successful biotope add call."""
+    mock_add.return_value = True
+    
+    result = _call_biotope_add(sample_file, biotope_project)
+    
+    assert result is True
+    mock_add.assert_called_once_with(sample_file, biotope_project, biotope_project / ".biotope" / "datasets", force=False)
+    mock_stage.assert_called_once_with(biotope_project)
+
+
+@mock.patch("biotope.commands.add._add_file")
+@mock.patch("biotope.commands.add._stage_git_changes")
+def test_call_biotope_add_failure(mock_stage, mock_add, biotope_project, sample_file):
+    """Test biotope add call when add fails."""
+    mock_add.return_value = False
+    
+    result = _call_biotope_add(sample_file, biotope_project)
+    
+    assert result is False
+    mock_add.assert_called_once()
+    mock_stage.assert_not_called()
+
+
+@mock.patch("biotope.commands.add._add_file")
+def test_call_biotope_add_exception(mock_add, biotope_project, sample_file):
+    """Test biotope add call when exception occurs."""
+    mock_add.side_effect = Exception("Add failed")
+    
+    result = _call_biotope_add(sample_file, biotope_project)
+    
+    assert result is False
+
+
+@mock.patch("biotope.commands.get.download_file")
+@mock.patch("biotope.commands.get._call_biotope_add")
+def test_get_command_success(mock_add, mock_download, runner, biotope_project):
+    """Test successful get command execution."""
+    from biotope.commands.get import get
+    
+    # Setup mocks
+    downloaded_file = biotope_project / "downloads" / "test.txt"
+    downloaded_file.parent.mkdir(parents=True, exist_ok=True)
+    downloaded_file.write_text("test content")
+    mock_download.return_value = downloaded_file
+    mock_add.return_value = True
+    
+    with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
+        with mock.patch("biotope.commands.get.is_git_repo", return_value=True):
+            result = runner.invoke(get, ["https://example.com/test.txt"])
+    
+    assert result.exit_code == 0
+    assert "📥 Downloading file from:" in result.output
+    assert "✅ Downloaded:" in result.output
+    assert "📁 Adding file to biotope project..." in result.output
+    assert "✅ File added to biotope project" in result.output
+    assert "Next steps:" in result.output
+    
+    mock_download.assert_called_once()
+    mock_add.assert_called_once()
+
+
+@mock.patch("biotope.commands.get.download_file")
+def test_get_command_download_failure(mock_download, runner, biotope_project):
     """Test get command when download fails."""
     from biotope.commands.get import get
-
-    # Mock requests.get to raise an HTTPError
-    mock_get.side_effect = requests.exceptions.HTTPError(
-        "404 Client Error: Not Found for url: https://example.com/test.txt",
-    )
-
-    result = runner.invoke(get, ["https://example.com/test.txt"])
-
-    assert result.exit_code == 0  # Command should exit gracefully
-    assert "Error downloading file" in result.output
-
-
-def test_get_file_and_annotate_successful_flow(tmp_path, sample_file):
-    """Test successful file download and annotation flow."""
-    from unittest import mock
-
-    # Setup mocks
-    with (
-        mock.patch("biotope.commands.get.requests.get") as mock_get,
-        mock.patch("click.get_current_context") as mock_get_context,
-    ):
-        # Setup the context mock
-        mock_context = mock.Mock()
-        mock_context.invoke = mock.Mock()
-        mock_get_context.return_value = mock_context
-
-        # Setup mock response
-        mock_response = mock.Mock()
-        mock_response.headers = {}
-        mock_response.iter_content.return_value = [b"test content"]
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
-
-        # Call the function
-        get_file_and_annotate(
-            url="https://example.com/test.txt",
-            output_dir=str(tmp_path),
-        )
-
-        # Verify mocks were called correctly
-        mock_get.assert_called_once_with("https://example.com/test.txt", stream=True)
-        mock_context.invoke.assert_called_once()
+    
+    mock_download.return_value = None
+    
+    with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
+        with mock.patch("biotope.commands.get.is_git_repo", return_value=True):
+            result = runner.invoke(get, ["https://example.com/test.txt"])
+    
+    assert result.exit_code == 1  # Should abort on download failure
+    assert "❌ Failed to download file" in result.output
 
 
-@pytest.fixture
-def test_files_dir(tmp_path):
-    """Create a temporary directory with test files."""
-    # Create test files
-    csv_content = """GeneID,Sample1,Sample2,Sample3,Sample4,Sample5
-BRCA1,12.5,15.2,8.7,10.3,14.1
-TP53,9.8,11.4,7.2,8.9,10.5
-EGFR,14.2,13.8,15.1,12.7,13.9"""
-
-    fasta_content = """>BRCA1_HUMAN BRCA1, early onset breast cancer 1
-MSTESMNRVAVGDMLRLLHEVEGVRTLRQRVKDSQPLGDFYDRVRKELQLLRQRMKKT
-FQLVDFSRRLEDLLMKLLNQKAKLPGLLNTDPRLLEVLQDMGHARALAVLLTAGDGLG"""
-
-    # Write files
-    csv_file = tmp_path / "test_gene_expression.csv"
-    fasta_file = tmp_path / "test_protein_sequences.fasta"
-
-    csv_file.write_text(csv_content)
-    fasta_file.write_text(fasta_content)
-
-    return tmp_path
+@mock.patch("biotope.commands.get.download_file")
+@mock.patch("biotope.commands.get._call_biotope_add")
+def test_get_command_add_failure(mock_add, mock_download, runner, biotope_project):
+    """Test get command when add fails."""
+    from biotope.commands.get import get
+    
+    downloaded_file = biotope_project / "downloads" / "test.txt"
+    downloaded_file.parent.mkdir(parents=True, exist_ok=True)
+    downloaded_file.write_text("test content")
+    mock_download.return_value = downloaded_file
+    mock_add.return_value = False
+    
+    with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
+        with mock.patch("biotope.commands.get.is_git_repo", return_value=True):
+            result = runner.invoke(get, ["https://example.com/test.txt"])
+    
+    assert result.exit_code == 0
+    assert "⚠️  File downloaded but not added to biotope project" in result.output
+    assert "You can manually add it with:" in result.output
 
 
-@mock.patch("biotope.commands.get.requests.get")
-def test_get_file_and_annotate_csv(mock_get, test_files_dir, runner):
-    """Test metadata extraction from CSV file."""
-    csv_file = test_files_dir / "test_gene_expression.csv"
-    output_dir = test_files_dir / "downloads"
-    output_dir.mkdir(exist_ok=True)
-
-    # Create a file URL
-    file_url = f"file://{csv_file.absolute()}"
-
-    # Setup mock response
-    mock_response = mock.Mock()
-    mock_response.headers = {}
-    mock_response.iter_content.return_value = [csv_file.read_bytes()]
-    mock_response.raise_for_status.return_value = None
-    mock_get.return_value = mock_response
-
-    # Mock click context
-    with mock.patch("click.get_current_context") as mock_context:
-        mock_ctx = mock.Mock()
-        mock_ctx.invoke = mock.Mock()
-        mock_context.return_value = mock_ctx
-
-        # Call the function
-        get_file_and_annotate(file_url, str(output_dir))
-
-        # Verify mocks were called correctly
-        mock_get.assert_called_once_with(file_url, stream=True)
-        mock_ctx.invoke.assert_called_once()
+@mock.patch("biotope.commands.get.download_file")
+def test_get_command_no_add_flag(mock_download, runner, biotope_project):
+    """Test get command with --no-add flag."""
+    from biotope.commands.get import get
+    
+    downloaded_file = biotope_project / "downloads" / "test.txt"
+    downloaded_file.parent.mkdir(parents=True, exist_ok=True)
+    downloaded_file.write_text("test content")
+    mock_download.return_value = downloaded_file
+    
+    with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
+        with mock.patch("biotope.commands.get.is_git_repo", return_value=True):
+            result = runner.invoke(get, ["https://example.com/test.txt", "--no-add"])
+    
+    assert result.exit_code == 0
+    assert "✅ Downloaded:" in result.output
+    assert "📁 Adding file to biotope project..." not in result.output
+    assert "File downloaded. To add to biotope project:" in result.output
 
 
-@mock.patch("biotope.commands.get.requests.get")
-def test_get_file_and_annotate_fasta(mock_get, test_files_dir, runner):
-    """Test metadata extraction from FASTA file."""
-    fasta_file = test_files_dir / "test_protein_sequences.fasta"
-    output_dir = test_files_dir / "downloads"
-    output_dir.mkdir(exist_ok=True)
-
-    # Create a file URL
-    file_url = f"file://{fasta_file.absolute()}"
-
-    # Setup mock response
-    mock_response = mock.Mock()
-    mock_response.headers = {}
-    mock_response.iter_content.return_value = [fasta_file.read_bytes()]
-    mock_response.raise_for_status.return_value = None
-    mock_get.return_value = mock_response
-
-    # Mock click context
-    with mock.patch("click.get_current_context") as mock_context:
-        mock_ctx = mock.Mock()
-        mock_ctx.invoke = mock.Mock()
-        mock_context.return_value = mock_ctx
-
-        # Call the function
-        get_file_and_annotate(file_url, str(output_dir))
-
-        # Verify mocks were called correctly
-        mock_get.assert_called_once_with(file_url, stream=True)
-        mock_ctx.invoke.assert_called_once()
+def test_get_command_not_in_biotope_project(runner):
+    """Test get command when not in a biotope project."""
+    from biotope.commands.get import get
+    
+    with mock.patch("biotope.commands.get.find_biotope_root", return_value=None):
+        result = runner.invoke(get, ["https://example.com/test.txt"])
+    
+    assert result.exit_code == 1
+    assert "❌ Not in a biotope project" in result.output
 
 
-@mock.patch("biotope.commands.get.requests.get")
-def test_get_file_and_annotate_invalid_url(mock_get, test_files_dir, runner):
-    """Test handling of invalid URL."""
-    output_dir = test_files_dir / "downloads"
-    output_dir.mkdir(exist_ok=True)
-
-    # Mock requests.get to raise an error
-    mock_get.side_effect = requests.exceptions.RequestException("Invalid URL")
-
-    # Call the function with invalid URL
-    get_file_and_annotate("invalid://url", str(output_dir))
-
-    # Verify error was handled
-    mock_get.assert_called_once_with("invalid://url", stream=True)
+def test_get_command_not_in_git_repo(runner, biotope_project):
+    """Test get command when not in a Git repository."""
+    from biotope.commands.get import get
+    
+    with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
+        with mock.patch("biotope.commands.get.is_git_repo", return_value=False):
+            result = runner.invoke(get, ["https://example.com/test.txt"])
+    
+    assert result.exit_code == 1
+    assert "❌ Not in a Git repository" in result.output
 
 
-@mock.patch("biotope.commands.get.requests.get")
-def test_get_file_and_annotate_nonexistent_file(mock_get, test_files_dir, runner):
-    """Test handling of nonexistent file."""
-    output_dir = test_files_dir / "downloads"
-    output_dir.mkdir(exist_ok=True)
-
-    # Create a file URL for nonexistent file
-    file_url = f"file://{test_files_dir}/nonexistent.txt"
-
-    # Mock requests.get to raise an error
-    mock_get.side_effect = requests.exceptions.RequestException("File not found")
-
-    # Call the function
-    get_file_and_annotate(file_url, str(output_dir))
-
-    # Verify error was handled
-    mock_get.assert_called_once_with(file_url, stream=True)
-
-
-@mock.patch("biotope.commands.get.requests.get")
-def test_get_file_and_annotate_with_annotation(mock_get, test_files_dir, runner):
-    """Test metadata extraction with annotation process."""
-    csv_file = test_files_dir / "test_gene_expression.csv"
-    output_dir = test_files_dir / "downloads"
-    output_dir.mkdir(exist_ok=True)
-
-    # Create a file URL
-    file_url = f"file://{csv_file.absolute()}"
-
-    # Setup mock response
-    mock_response = mock.Mock()
-    mock_response.headers = {}
-    mock_response.iter_content.return_value = [csv_file.read_bytes()]
-    mock_response.raise_for_status.return_value = None
-    mock_get.return_value = mock_response
-
-    # Mock click context
-    with mock.patch("click.get_current_context") as mock_context:
-        mock_ctx = mock.Mock()
-        mock_ctx.invoke = mock.Mock()
-        mock_context.return_value = mock_ctx
-
-        # Call the function
-        get_file_and_annotate(file_url, str(output_dir))
-
-        # Verify mocks were called correctly
-        mock_get.assert_called_once_with(file_url, stream=True)
-        mock_ctx.invoke.assert_called_once()
+@mock.patch("biotope.commands.get.download_file")
+@mock.patch("biotope.commands.get._call_biotope_add")
+def test_get_command_custom_output_dir(mock_add, mock_download, runner, biotope_project):
+    """Test get command with custom output directory."""
+    from biotope.commands.get import get
+    
+    custom_dir = biotope_project / "custom_downloads"
+    downloaded_file = custom_dir / "test.txt"
+    mock_download.return_value = downloaded_file
+    mock_add.return_value = True
+    
+    with mock.patch("biotope.commands.get.find_biotope_root", return_value=biotope_project):
+        with mock.patch("biotope.commands.get.is_git_repo", return_value=True):
+            result = runner.invoke(get, ["https://example.com/test.txt", "--output-dir", str(custom_dir)])
+    
+    assert result.exit_code == 0
+    mock_download.assert_called_once()
+    # Check that the output directory was passed correctly
+    call_args = mock_download.call_args[0]
+    assert call_args[1] == custom_dir
