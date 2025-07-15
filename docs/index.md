@@ -69,6 +69,7 @@ biotope log --oneline
 
 - **[Git Integration for Users](git-integration.md)**: Learn how to use biotope's Git integration, leveraging your existing Git knowledge
 - **[Git Integration for Developers](git-integration-dev.md)**: Understand the technical implementation and architecture
+- **[Cluster Compliance](cluster-compliance.md)**: How to enforce and check metadata validation policies across clusters
 
 ## Metadata annotation using Croissant, short guide
 
@@ -111,6 +112,7 @@ and https://github.com/biocypher/biotope/blob/main/tests/commands/test_get.py
 
 - [Annotation Validation and Status Reporting](git-integration.md#annotation-validation-and-status-reporting): How to ensure your datasets are properly annotated and how to configure requirements (user guide).
 - [Developer & Admin Guide: Annotation Validation](git-integration-dev.md#developer--admin-guide-annotation-validation): How to customize, extend, and manage annotation validation (admin/dev guide).
+- [Cluster Compliance](cluster-compliance.md): Cluster-wide enforcement, compliance checking, and best practices.
 
 ## Copyright
 
