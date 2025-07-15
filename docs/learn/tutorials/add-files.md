@@ -58,6 +58,10 @@ When you run `biotope add`, you'll see output like this:
   1. Run 'biotope status' to see staged files
   2. Run 'biotope annotate interactive --staged' to create metadata
   3. Run 'biotope commit -m "message"' to save changes
+
+💡 For incomplete annotations:
+  1. Run 'biotope status' to see which files need annotation
+  2. Run 'biotope annotate interactive --incomplete' to complete them
 ```
 
 This tells you:

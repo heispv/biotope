@@ -15,6 +15,12 @@ The annotation module can be used in several ways:
 # Interactive mode
 biotope annotate interactive
 
+# Interactive mode for staged files
+biotope annotate interactive --staged
+
+# Interactive mode for incomplete tracked files
+biotope annotate interactive --incomplete
+
 # Create metadata from CLI parameters
 biotope annotate create
 
@@ -130,6 +136,34 @@ biotope annotate interactive
    - Distribution details (format, size, URL)
    - Record structure (fields, data types)
    - Field-specific metadata (units, ranges, descriptions)
+
+### Annotating Staged Files
+
+If you have files staged with `biotope add`, you can annotate them all at once:
+
+```bash
+# Add files to staging
+biotope add data/*.csv
+
+# Annotate all staged files interactively
+biotope annotate interactive --staged
+```
+
+This will run the interactive annotation process for each staged file, pre-filling metadata with file information.
+
+### Completing Incomplete Annotations
+
+If you have tracked files with incomplete metadata (missing required fields), you can complete them:
+
+```bash
+# Check which files need annotation
+biotope status
+
+# Complete annotations for all incomplete tracked files
+biotope annotate interactive --incomplete
+```
+
+This will find all tracked files that don't meet the minimum annotation requirements and allow you to complete their metadata interactively.
 
 ### Validating Existing Annotations
 

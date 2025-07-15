@@ -55,6 +55,9 @@ biotope add data/raw/experiment.csv
 # Create metadata
 biotope annotate interactive --staged
 
+# Or complete incomplete annotations
+biotope annotate interactive --incomplete
+
 # Commit changes
 biotope commit -m "Add experiment dataset"
 

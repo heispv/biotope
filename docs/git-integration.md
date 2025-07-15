@@ -16,6 +16,9 @@ biotope add data/raw/experiment.csv
 # 3. Create metadata (like staging changes)
 biotope annotate interactive --staged
 
+# Or complete incomplete annotations
+biotope annotate interactive --incomplete
+
 # 4. Commit your metadata
 biotope commit -m "Add RNA-seq dataset with quality metrics"
 
@@ -147,6 +150,19 @@ biotope annotate interactive -f data/raw/experiment.csv
 
 # 3. Commit changes
 biotope commit -m "Update experiment description and add QC metrics"
+```
+
+### Completing Incomplete Annotations
+
+```bash
+# 1. Check which files need annotation
+biotope status
+
+# 2. Complete annotations for all incomplete tracked files
+biotope annotate interactive --incomplete
+
+# 3. Commit the completed annotations
+biotope commit -m "Complete metadata for all tracked datasets"
 ```
 
 ### Working with Your Team

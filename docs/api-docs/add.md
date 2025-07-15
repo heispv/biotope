@@ -71,6 +71,10 @@ The command provides detailed feedback:
   1. Run 'biotope status' to see staged files
   2. Run 'biotope annotate interactive --staged' to create metadata
   3. Run 'biotope commit -m "message"' to save changes
+
+💡 For incomplete annotations:
+  1. Run 'biotope status' to see which files need annotation
+  2. Run 'biotope annotate interactive --incomplete' to complete them
 ```
 
 ## Metadata Structure

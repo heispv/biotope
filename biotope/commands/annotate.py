@@ -352,7 +352,13 @@ def load(jsonld, record_set, num_records):
     is_flag=True,
     help="Annotate all staged files",
 )
-def interactive(file_path: str | None = None, prefill_metadata: str | None = None, staged: bool = False) -> None:
+@click.option(
+    "--incomplete",
+    "-i",
+    is_flag=True,
+    help="Annotate all tracked files with incomplete metadata",
+)
+def interactive(file_path: str | None = None, prefill_metadata: str | None = None, staged: bool = False, incomplete: bool = False) -> None:
     """Interactive annotation process for files."""
     console = Console()
 
@@ -398,6 +404,56 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
             
             # Run interactive annotation for this file
             _run_interactive_annotation(console, file_path, file_metadata, biotope_root)
+        
+        return
+
+    # Handle incomplete files
+    if incomplete:
+        biotope_root = find_biotope_root()
+        if not biotope_root:
+            click.echo("❌ Not in a biotope project. Run 'biotope init' first.")
+            raise click.Abort
+        
+        # Get all tracked files and check their annotation status
+        from biotope.validation import get_all_tracked_files, get_annotation_status_for_files
+        
+        tracked_files = get_all_tracked_files(biotope_root)
+        if not tracked_files:
+            click.echo("❌ No tracked files found. Use 'biotope add <file>' first.")
+            raise click.Abort
+        
+        annotation_status = get_annotation_status_for_files(biotope_root, tracked_files)
+        incomplete_files = [
+            file_path for file_path, (is_annotated, _) in annotation_status.items() 
+            if not is_annotated
+        ]
+        
+        if not incomplete_files:
+            click.echo("✅ All tracked files are properly annotated!")
+            return
+        
+        console.print(f"[bold blue]Found {len(incomplete_files)} file(s) with incomplete annotation[/]")
+        
+        for i, file_path in enumerate(incomplete_files):
+            metadata_file = biotope_root / file_path
+            console.print(f"\n[bold green]File {i+1}/{len(incomplete_files)}: {metadata_file.stem}[/]")
+            
+            # Load existing metadata to pre-fill
+            try:
+                with open(metadata_file) as f:
+                    existing_metadata = json.load(f)
+            except (json.JSONDecodeError, IOError):
+                existing_metadata = {}
+            
+            # Extract file information from existing metadata
+            file_info = {
+                "name": existing_metadata.get("name", metadata_file.stem),
+                "description": existing_metadata.get("description", f"Dataset for {metadata_file.stem}"),
+                "distribution": existing_metadata.get("distribution", [])
+            }
+            
+            # Run interactive annotation for this file (updating existing)
+            _run_interactive_annotation(console, metadata_file, file_info, biotope_root, update_existing=True)
         
         return
 
@@ -496,11 +552,17 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
     console.print("─" * 50)
     console.print("[italic]The following fields are optional but recommended for scientific datasets[/]")
 
+    # Get default format from distribution if available
+    default_format = ""
+    distribution = metadata.get("distribution", [])
+    if distribution and len(distribution) > 0:
+        default_format = distribution[0].get("encodingFormat", "")
+    
     format = click.prompt(
         "File format (MIME type, e.g., text/csv, application/json, application/x-hdf5, application/fastq)",
         default=metadata.get("encodingFormat")
         or metadata.get("format")
-        or (metadata.get("distribution", [{}])[0].get("encodingFormat", "")),
+        or default_format,
     )
 
     legal_obligations = click.prompt(
@@ -858,7 +920,7 @@ def interactive(file_path: str | None = None, prefill_metadata: str | None = Non
     console.print(f"[bold yellow]biotope annotate validate --jsonld {output_path}[/]")
 
 
-def _run_interactive_annotation(console: Console, file_path: Path, prefill_metadata: dict, biotope_root: Path) -> None:
+def _run_interactive_annotation(console: Console, file_path: Path, prefill_metadata: dict, biotope_root: Path, update_existing: bool = False) -> None:
     """Run interactive annotation for a specific file."""
     # Start with pre-filled metadata
     metadata = merge_metadata(prefill_metadata)
@@ -954,11 +1016,17 @@ def _run_interactive_annotation(console: Console, file_path: Path, prefill_metad
     console.print("─" * 50)
     console.print("[italic]The following fields are optional but recommended for scientific datasets[/]")
     
+    # Get default format from distribution if available
+    default_format = ""
+    distribution = metadata.get("distribution", [])
+    if distribution and len(distribution) > 0:
+        default_format = distribution[0].get("encodingFormat", "")
+    
     format = click.prompt(
         "File format (MIME type, e.g., text/csv, application/json, application/x-hdf5, application/fastq)",
         default=metadata.get("encodingFormat")
         or metadata.get("format")
-        or (metadata.get("distribution", [{}])[0].get("encodingFormat", "")),
+        or default_format,
     )
     
     legal_obligations = click.prompt(
@@ -1046,8 +1114,14 @@ def _run_interactive_annotation(console: Console, file_path: Path, prefill_metad
     datasets_dir = biotope_root / ".biotope" / "datasets"
     datasets_dir.mkdir(parents=True, exist_ok=True)
     
-    # Use the dataset name for the filename, not the original file name
-    output_path = datasets_dir / f"{dataset_name}.jsonld"
+    # Determine output path
+    if update_existing:
+        # Keep the existing filename when updating
+        output_path = file_path
+    else:
+        # Use the dataset name for the filename, not the original file name
+        output_path = datasets_dir / f"{dataset_name}.jsonld"
+    
     with open(output_path, "w") as f:
         json.dump(metadata, f, indent=2)
     
