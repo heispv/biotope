@@ -51,10 +51,13 @@ Biotope uses a **Git-on-Top** strategy for metadata version control, providing:
 # Initialize project (with Git, .gitignore, and optional project metadata)
 biotope init
 
-# Add local data files (creates metadata, excludes from Git)
+# Add local data files (creates metadata, ignored by Git by default)
 biotope add data/raw/experiment.csv
 
-# Or download and stage remote files
+# Or add new files at once, recursively
+biotope add -r data
+
+# Or download and stage remote files (calls `add` once finished)
 biotope get https://example.com/data/experiment.csv
 
 # Check status (shows metadata changes, not data files)
