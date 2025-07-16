@@ -7,24 +7,27 @@
     Biotope is still under development and the API is subject to change.
     The package is currently only meant for developer use and prototyping.
 
-The *Biotope* CLI integration is our attempt to integrate BioCypher ecosystem
+The *Biotope* CLI integration is our attempt to integrate our open source ecosystem
 packages into an accessible suite for scientific knowledge management. We are
 first approaching the project from a CLI perspective, as this is the most basic
 technology for prototyping automated workflows. We aim to extend this towards
 other user-interfaces, such as web apps, in the future.
 
 *Biotope* contains various modules for different tasks, some of which are
-straightfoward applications of existing BioCypher packages, while others
+straightfoward applications of existing ecosystem packages, while others
 are prototypes for new features. See more information in the API documentation.
 
-- `biotope init`: Initialize a new project in the BioCypher suite
-- `biotope build`: Build a BioCypher knowledge representation
-- `biotope chat`: Chat with a BioCypher project (BioChatter)
-- `biotope read`: Extract information from unstructured modalities (BioGather)
-- `biotope view`: Use visual analysis tools to interpret your data and metadata
+- `biotope init`: Initialize a new project
+- `biotope status/add/commit/log/push/pull`: Manage metadata in a git-like fashion
 - `biotope get`: Download files from a URL and stage them for annotation and version control
 - `biotope annotate`: Annotate your data with consistent metadata in Croissant ML
+- `biotope check-data`: Perform consistency checks for file integrity
 - `biotope config`: Manage project configuration and metadata settings
+- `biotope build`: Build a [BioCypher](https://biocypher.org) knowledge representation
+- `biotope chat`: Chat with a project using [BioChatter](https://biochatter.org)
+- `biotope agent`: Plan agentic workflows using [BioChatter](https://biochatter.org)
+- `biotope read`: Extract information from unstructured modalities (BioGather)
+- `biotope view`: Use visual analysis tools to interpret your data and metadata
 
 ## Git Integration for Metadata Version Control
 
