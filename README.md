@@ -29,7 +29,10 @@ biotope init
 # 2. Add local data files for annotation and tracking
 biotope add data/raw/experiment.csv
 
-#    Or download and stage remote files
+#    Or add all new files in a folder recursively
+biotope add -r data
+
+#    Or download and stage remote files (will call `add` once finished)
 biotope get https://example.com/data/experiment.csv
 
 # 3. Check project status and staged files
