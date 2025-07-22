@@ -11,12 +11,9 @@ from click.testing import CliRunner
 
 from biotope.commands.add import (
     _add_file,
-    _stage_git_changes,
-    add,
-    calculate_file_checksum,
-    is_file_tracked,
+    add
 )
-from biotope.utils import is_git_repo, find_biotope_root
+from biotope.utils import is_git_repo, find_biotope_root, calculate_file_checksum, is_file_tracked, stage_git_changes
 
 
 @pytest.fixture
@@ -126,7 +123,7 @@ def test_stage_git_changes(git_repo):
     """Test staging Git changes."""
     with mock.patch("subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
-        _stage_git_changes(git_repo)
+        stage_git_changes(git_repo)
         mock_run.assert_called_once_with(
             ["git", "add", ".biotope/"],
             cwd=git_repo,
@@ -139,7 +136,7 @@ def test_stage_git_changes_failure(git_repo):
     with mock.patch("subprocess.run") as mock_run:
         mock_run.side_effect = subprocess.CalledProcessError(1, "git")
         # Should not raise an exception
-        _stage_git_changes(git_repo)
+        stage_git_changes(git_repo)
 
 
 def test_is_file_tracked_absolute_path(git_repo, sample_file):
@@ -202,8 +199,9 @@ def test_add_file_absolute_path(git_repo, sample_file):
     result = _add_file(target_file, git_repo, datasets_dir, False)
     assert result is True
     
-    # Check that metadata file was created
-    metadata_file = datasets_dir / f"{target_file.stem}.jsonld"
+    # Check that metadata file was created with directory structure
+    relative_path = target_file.relative_to(git_repo)
+    metadata_file = datasets_dir / relative_path.with_suffix('.jsonld')
     assert metadata_file.exists()
     
     # Check metadata content
@@ -242,8 +240,8 @@ def test_add_file_relative_path(git_repo):
         result = _add_file(relative_path, git_repo, datasets_dir, False)
         assert result is True
         
-        # Check that metadata file was created
-        metadata_file = datasets_dir / f"{relative_path.stem}.jsonld"
+        # Check that metadata file was created with directory structure
+        metadata_file = datasets_dir / relative_path.with_suffix('.jsonld')
         assert metadata_file.exists()
         
         # Check metadata content
@@ -323,7 +321,7 @@ def test_add_file_relative_path_already_tracked(git_repo):
 @mock.patch("biotope.utils.find_biotope_root")
 @mock.patch("biotope.utils.is_git_repo")
 @mock.patch("biotope.commands.add._add_file")
-@mock.patch("biotope.commands.add._stage_git_changes")
+@mock.patch("biotope.commands.add.stage_git_changes")
 def test_add_command_absolute_path(
     mock_stage, mock_add_file, mock_is_git, mock_find_root, runner, git_repo, sample_file
 ):
@@ -350,7 +348,7 @@ def test_add_command_absolute_path(
 @mock.patch("biotope.utils.find_biotope_root")
 @mock.patch("biotope.utils.is_git_repo")
 @mock.patch("biotope.commands.add._add_file")
-@mock.patch("biotope.commands.add._stage_git_changes")
+@mock.patch("biotope.commands.add.stage_git_changes")
 def test_add_command_relative_path(
     mock_stage, mock_add_file, mock_is_git, mock_find_root, runner, git_repo
 ):
@@ -435,7 +433,7 @@ def test_add_command_no_paths(runner):
 @mock.patch("biotope.utils.find_biotope_root")
 @mock.patch("biotope.utils.is_git_repo")
 @mock.patch("biotope.commands.add._add_file")
-@mock.patch("biotope.commands.add._stage_git_changes")
+@mock.patch("biotope.commands.add.stage_git_changes")
 def test_add_command_recursive(
     mock_stage, mock_add_file, mock_is_git, mock_find_root, runner, git_repo
 ):
@@ -472,7 +470,7 @@ def test_add_command_recursive(
 @mock.patch("biotope.utils.find_biotope_root")
 @mock.patch("biotope.utils.is_git_repo")
 @mock.patch("biotope.commands.add._add_file")
-@mock.patch("biotope.commands.add._stage_git_changes")
+@mock.patch("biotope.commands.add.stage_git_changes")
 def test_add_command_directory_without_recursive(
     mock_stage, mock_add_file, mock_is_git, mock_find_root, runner, git_repo
 ):
@@ -501,7 +499,7 @@ def test_add_command_directory_without_recursive(
 @mock.patch("biotope.utils.find_biotope_root")
 @mock.patch("biotope.utils.is_git_repo")
 @mock.patch("biotope.commands.add._add_file")
-@mock.patch("biotope.commands.add._stage_git_changes")
+@mock.patch("biotope.commands.add.stage_git_changes")
 def test_add_command_mixed_success_and_failure(
     mock_stage, mock_add_file, mock_is_git, mock_find_root, runner, git_repo, sample_file
 ):
