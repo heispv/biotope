@@ -28,6 +28,29 @@ def init(dir: Path) -> None:  # noqa: A002
         click.echo("❌ A biotope project already exists in this directory.")
         click.echo("To start fresh, remove the .biotope directory first.")
         raise click.Abort
+    
+    current_dir = dir.resolve()
+    parent_dir = current_dir.parent
+    
+    # Check if .biotope and .git are in the same directory
+    while parent_dir != parent_dir.parent:
+        if (parent_dir / ".git").exists():
+            click.echo("❌ Found a Git repository in a parent directory.")
+            click.echo("Biotope requires .git and .biotope to be in the same directory.")
+            click.echo(f"Please initialize biotope in the Git repository root ({parent_dir}) instead.")
+            raise click.Abort
+        parent_dir = parent_dir.parent
+    
+    # Check if .git is not a submodule
+    if (current_dir / ".git").exists():
+        check_parent = current_dir.parent
+        while check_parent != check_parent.parent:
+            if (check_parent / ".git").exists():
+                click.echo("❌ Current directory appears to be a Git submodule.")
+                click.echo("Biotope does not support Git submodules.")
+                click.echo(f"Please initialize biotope in the main Git repository root ({check_parent}) instead.")
+                raise click.Abort
+            check_parent = check_parent.parent
 
     click.echo("Establishing biotope! Let's set up your project.\n")
 
@@ -237,6 +260,13 @@ def init(dir: Path) -> None:  # noqa: A002
             else:
                 click.echo("❌ Git is necessary to use biotope")
                 raise click.Abort
+        
+        # Verify that .git exists in the target directory (if git wasn't just initialized)
+        # Note: .biotope will be created later, so we just check for .git presence
+        if not git_was_initialized and not (dir / ".git").exists():
+            # This shouldn't happen if our earlier checks worked correctly
+            click.echo("❌ Git repository not found in target directory")
+            raise click.Abort
 
         dir.mkdir(parents=True, exist_ok=True)
         create_project_structure(dir, user_config, metadata, project_metadata)

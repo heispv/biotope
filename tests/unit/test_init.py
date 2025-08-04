@@ -175,6 +175,49 @@ def test_init_existing_biotope():
         assert "already exists" in result.output
 
 
+def test_init_parent_git_repository():
+    """Test initialization fails when git repository exists in parent directory."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        # Create a parent git repository
+        Path(".git").mkdir()
+        
+        # Create a subdirectory where we try to init biotope
+        subdir = Path("subproject")
+        subdir.mkdir()
+        
+        # Try to init biotope in the subdirectory
+        result = runner.invoke(init, ["--dir", str(subdir)], obj={"version": "0.1.0"})
+        assert result.exit_code != 0
+        assert "Found a Git repository in a parent directory" in result.output
+        assert "Please initialize biotope in the Git repository root" in result.output
+
+
+def test_init_git_submodule_scenario():
+    """Test initialization fails when current directory has git and parent has git (submodule-like scenario)."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        # Create a directory structure that simulates a git submodule scenario
+        # This tests the case where both current and parent directories have .git
+        # In practice, this gets caught by the parent directory check first
+        main_repo = Path("main_repo")
+        main_repo.mkdir()
+        (main_repo / ".git").mkdir()
+        
+        # Create a subdirectory with its own .git (simulating a submodule)
+        submodule = main_repo / "submodule"
+        submodule.mkdir()
+        (submodule / ".git").mkdir()
+        
+        # Try to init biotope in the submodule directory
+        result = runner.invoke(init, ["--dir", str(submodule)], obj={"version": "0.1.0"})
+        assert result.exit_code != 0
+        # The parent directory check catches this case first
+        assert "Found a Git repository in a parent directory" in result.output
+        assert "Please initialize biotope in the Git repository root" in result.output
+
+
+
 def test_init_custom_directory():
     """Test initialization in a custom directory."""
     runner = CliRunner()

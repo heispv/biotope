@@ -217,9 +217,11 @@ class TestGitIntegration:
         # Should not find biotope root in empty directory
         assert find_biotope_root() is None
         
-        # Create .biotope directory
+        # Create .biotope and .git directories (both required)
         biotope_dir = tmp_path / ".biotope"
         biotope_dir.mkdir()
+        git_dir = tmp_path / ".git"
+        git_dir.mkdir()
         
         # Change to tmp_path and find root
         original_cwd = os.getcwd()

@@ -1599,19 +1599,6 @@ def get_staged_files(biotope_root: Path) -> list:
     staged_files = []
     
     try:
-        # Get the git root directory to understand relative paths
-        git_root_result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=biotope_root,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        git_root = Path(git_root_result.stdout.strip())
-        
-        # Calculate the relative path from git root to biotope root
-        biotope_relative_to_git = biotope_root.relative_to(git_root)
-        
         # Get staged files from Git
         result = subprocess.run(
             ["git", "diff", "--cached", "--name-only"],
@@ -1622,23 +1609,8 @@ def get_staged_files(biotope_root: Path) -> list:
         )
         
         for file_path in result.stdout.splitlines():
-            # Handle both cases: biotope project at git root and in subdirectory
-            if biotope_relative_to_git == Path("."):
-                # Biotope project is at git root
-                expected_prefix = ".biotope/datasets/"
-                metadata_file_path = file_path
-            else:
-                # Biotope project is in a subdirectory
-                expected_prefix = f"{biotope_relative_to_git}/.biotope/datasets/"
-                if file_path.startswith(str(biotope_relative_to_git) + "/"):
-                    # Strip the biotope relative path to get the path relative to biotope root
-                    metadata_file_path = file_path[len(str(biotope_relative_to_git)) + 1:]
-                else:
-                    continue
-            
-            if file_path.startswith(expected_prefix) and file_path.endswith(".jsonld"):
-                # Read the metadata file to get file information
-                metadata_file = biotope_root / metadata_file_path
+            if file_path.startswith(".biotope/datasets/") and file_path.endswith(".jsonld"):
+                metadata_file = biotope_root / file_path
                 try:
                     with open(metadata_file) as f:
                         metadata = json.load(f)
