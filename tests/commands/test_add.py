@@ -388,7 +388,7 @@ def test_add_command_relative_path(
         os.chdir(original_cwd)
 
 
-@mock.patch("biotope.utils.find_biotope_root")
+@mock.patch("biotope.commands.add.find_biotope_root")
 def test_add_command_no_biotope_project(mock_find_root, runner, tmp_path):
     """Test add command when not in a biotope project."""
     mock_find_root.return_value = None
