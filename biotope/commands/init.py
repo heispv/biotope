@@ -30,27 +30,38 @@ def init(dir: Path) -> None:  # noqa: A002
         raise click.Abort
     
     current_dir = dir.resolve()
-    parent_dir = current_dir.parent
     
-    # Check if .biotope and .git are in the same directory
-    while parent_dir != parent_dir.parent:
-        if (parent_dir / ".git").exists():
+    # Check if .git and .biotope are in the same directory
+    if not (current_dir / ".git").exists():
+        parent_dir = current_dir.parent
+        parent_git_found = False
+        while parent_dir != parent_dir.parent:
+            if (parent_dir / ".git").exists():
+                parent_git_found = True
+                break
+            parent_dir = parent_dir.parent
+        
+        if parent_git_found:
             click.echo("❌ Found a Git repository in a parent directory.")
             click.echo("Biotope requires .git and .biotope to be in the same directory.")
             click.echo(f"Please initialize biotope in the Git repository root ({parent_dir}) instead.")
-            raise click.Abort
-        parent_dir = parent_dir.parent
-    
-    # Check if .git is not a submodule
-    if (current_dir / ".git").exists():
-        check_parent = current_dir.parent
-        while check_parent != check_parent.parent:
-            if (check_parent / ".git").exists():
-                click.echo("❌ Current directory appears to be a Git submodule.")
-                click.echo("Biotope does not support Git submodules.")
-                click.echo(f"Please initialize biotope in the main Git repository root ({check_parent}) instead.")
+            click.echo("Or initialize a Git repository in the current directory to create a Git submodule.")
+            
+            if click.confirm(
+                "\nWould you like to initialize a Git repository in the current directory to create a Git submodule?",
+                default=False,
+            ):
+                try:
+                    _init_git_repo(current_dir)
+                    click.echo("✅ Git repository initialized in current directory")
+                    click.echo("You can now proceed with biotope initialization.\n")
+                except Exception as e:
+                    click.echo(f"❌ Failed to initialize Git repository: {e}")
+                    click.echo("Please initialize Git manually and try again.")
+                    raise click.Abort
+            else:
+                click.echo("Please initialize biotope in the Git repository root or create a Git repository here first.")
                 raise click.Abort
-            check_parent = check_parent.parent
 
     click.echo("Establishing biotope! Let's set up your project.\n")
 
