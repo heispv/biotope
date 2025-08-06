@@ -129,7 +129,7 @@ def _add_file(
     metadata = {
         "@context": {"@vocab": "https://schema.org/"},
         "@type": "Dataset",
-        "name": file_path.stem,
+        "name": str(file_path.relative_to(biotope_root)),
         "description": f"Dataset for {file_path.name}",
         "distribution": [
             {

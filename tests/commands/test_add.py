@@ -211,7 +211,7 @@ def test_add_file_absolute_path(git_repo, sample_file):
     with open(metadata_file) as f:
         metadata = json.load(f)
     
-    assert metadata["name"] == target_file.stem
+    assert metadata["name"] == str(target_file.relative_to(git_repo))
     assert metadata["distribution"][0]["name"] == target_file.name
     assert metadata["distribution"][0]["contentUrl"] == str(target_file.relative_to(git_repo))
     assert "sha256" in metadata["distribution"][0]
@@ -251,7 +251,7 @@ def test_add_file_relative_path(git_repo):
         with open(metadata_file) as f:
             metadata = json.load(f)
         
-        assert metadata["name"] == relative_path.stem
+        assert metadata["name"] == str(target_file.relative_to(git_repo))
         assert metadata["distribution"][0]["name"] == relative_path.name
         assert metadata["distribution"][0]["contentUrl"] == str(relative_path)
         assert "sha256" in metadata["distribution"][0]
